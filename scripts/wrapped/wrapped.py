@@ -29,6 +29,53 @@ from typing import Optional
 
 import requests
 
+
+# ============================================================================
+# CARGA DE .ENV
+# ============================================================================
+
+def load_dotenv(env_path: Path = None) -> dict:
+    """
+    Carga variables de entorno desde un archivo .env
+    """
+    env_vars = {}
+
+    # Buscar .env en el directorio del script
+    if env_path is None:
+        script_dir = Path(__file__).parent
+        env_path = script_dir / '.env'
+
+    if not env_path.exists():
+        return env_vars
+
+    with open(env_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            # Ignorar comentarios y líneas vacías
+            if not line or line.startswith('#'):
+                continue
+
+            # Parsear KEY=VALUE
+            if '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+
+                # Remover comillas si existen
+                if (value.startswith('"') and value.endswith('"')) or \
+                   (value.startswith("'") and value.endswith("'")):
+                    value = value[1:-1]
+
+                env_vars[key] = value
+                # También establecer en os.environ
+                os.environ[key] = value
+
+    return env_vars
+
+
+# Cargar .env al importar el módulo
+_env_vars = load_dotenv()
+
 # ============================================================================
 # CONFIGURACIÓN
 # ============================================================================
@@ -800,25 +847,38 @@ Ejemplos:
         """
     )
 
+    # Obtener valores por defecto desde .env
+    default_api_key = os.environ.get('IMMICH_API_KEY', '')
+    default_url = os.environ.get('IMMICH_URL', DEFAULT_BASE_URL)
+    default_year = os.environ.get('WRAPPED_YEAR')
+
+    if default_year:
+        try:
+            default_year = int(default_year)
+        except ValueError:
+            default_year = datetime.now().year - 1
+    else:
+        default_year = datetime.now().year - 1
+
     parser.add_argument(
         '--year', '-y',
         type=int,
-        default=datetime.now().year - 1,
-        help='Año para generar el Wrapped (default: año anterior)'
+        default=default_year,
+        help=f'Año para generar el Wrapped (default: {default_year})'
     )
 
     parser.add_argument(
         '--api-key', '-k',
         type=str,
-        required=True,
-        help='API Key de Immich (obtener en Configuración > API Keys)'
+        default=default_api_key,
+        help='API Key de Immich (obtener en Configuración > API Keys, o usar .env)'
     )
 
     parser.add_argument(
         '--url', '-u',
         type=str,
-        default=DEFAULT_BASE_URL,
-        help=f'URL base de Immich (default: {DEFAULT_BASE_URL})'
+        default=default_url,
+        help=f'URL base de Immich (default: {default_url})'
     )
 
     parser.add_argument(
@@ -843,6 +903,15 @@ Ejemplos:
 
     args = parser.parse_args()
 
+    # Verificar que tenemos API key
+    if not args.api_key:
+        print("❌ Error: Se requiere una API Key.")
+        print("   Opciones:")
+        print("   1. Usar --api-key TU_API_KEY")
+        print("   2. Crear un archivo .env con IMMICH_API_KEY=tu_api_key")
+        print("   3. Copiar .env.example a .env y completar los valores")
+        sys.exit(1)
+
     # Banner
     print("""
     ╔═══════════════════════════════════════════╗
@@ -850,6 +919,10 @@ Ejemplos:
     ║      Tu resumen anual de fotos            ║
     ╚═══════════════════════════════════════════╝
     """)
+
+    # Mostrar si se cargó desde .env
+    if _env_vars:
+        print(f"📋 Configuración cargada desde .env")
 
     # Crear cliente
     print(f"🔌 Conectando a {args.url}...")
