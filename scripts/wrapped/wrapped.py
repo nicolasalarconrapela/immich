@@ -563,6 +563,51 @@ class HTMLReportGenerator:
             </div>
             """
 
+        # Construir galería de mejores fotos
+        gallery_html = ""
+        for i, photo in enumerate(self.stats.best_photos[:24]):
+            asset_id = photo.get('id')
+            filename = photo.get('originalFileName', 'Sin nombre')
+            date_str = photo.get('fileCreatedAt', '')[:10]
+            thumb_url = f"{self.client.base_url}/api/assets/{asset_id}/thumbnail?size=preview"
+            photo_url = f"{self.client.base_url}/photos/{asset_id}"
+
+            # Información adicional
+            exif = photo.get('exifInfo', {})
+            city = exif.get('city', '')
+            country = exif.get('country', '')
+            location = f"{city}, {country}" if city and country else (city or country or '')
+
+            gallery_html += f"""
+            <a href="{photo_url}" target="_blank" class="photo-card" title="{filename}">
+                <img src="{thumb_url}" alt="{filename}" loading="lazy" />
+                <div class="photo-overlay">
+                    <div class="photo-date">{date_str}</div>
+                    <div class="photo-location">{location}</div>
+                </div>
+            </a>
+            """
+
+        # Construir lista de archivos
+        files_html = ""
+        for i, photo in enumerate(self.stats.best_photos, 1):
+            filename = photo.get('originalFileName', 'Sin nombre')
+            original_path = photo.get('originalPath', '')
+            date_str = photo.get('fileCreatedAt', '')[:10]
+            asset_id = photo.get('id', '')
+            is_favorite = "⭐" if photo.get('isFavorite') else ""
+            photo_url = f"{self.client.base_url}/photos/{asset_id}"
+
+            files_html += f"""
+            <tr>
+                <td class="file-num">{i}</td>
+                <td class="file-fav">{is_favorite}</td>
+                <td class="file-name"><a href="{photo_url}" target="_blank">{filename}</a></td>
+                <td class="file-date">{date_str}</td>
+                <td class="file-path" title="{original_path}">{original_path[:50]}{'...' if len(original_path) > 50 else ''}</td>
+            </tr>
+            """
+
         return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -724,6 +769,137 @@ class HTMLReportGenerator:
             color: #f5576c;
         }}
 
+        /* Galería de fotos */
+        .photo-gallery {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }}
+
+        .photo-card {{
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+
+        .photo-card:hover {{
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }}
+
+        .photo-card img {{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }}
+
+        .photo-overlay {{
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }}
+
+        .photo-card:hover .photo-overlay {{
+            opacity: 1;
+        }}
+
+        .photo-date {{
+            font-size: 0.85rem;
+            color: #fff;
+        }}
+
+        .photo-location {{
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }}
+
+        /* Tabla de archivos */
+        .files-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }}
+
+        .files-table th {{
+            text-align: left;
+            padding: 12px 8px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            color: #a78bfa;
+        }}
+
+        .files-table td {{
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }}
+
+        .files-table tr:hover {{
+            background: rgba(255, 255, 255, 0.05);
+        }}
+
+        .files-table a {{
+            color: #667eea;
+            text-decoration: none;
+        }}
+
+        .files-table a:hover {{
+            color: #a78bfa;
+            text-decoration: underline;
+        }}
+
+        .file-num {{
+            color: #64748b;
+            width: 40px;
+        }}
+
+        .file-fav {{
+            width: 30px;
+        }}
+
+        .file-date {{
+            color: #94a3b8;
+            width: 100px;
+        }}
+
+        .file-path {{
+            color: #64748b;
+            font-size: 0.75rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+
+        .toggle-btn {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }}
+
+        .toggle-btn:hover {{
+            opacity: 0.9;
+        }}
+
+        .collapsible {{
+            display: none;
+        }}
+
+        .collapsible.show {{
+            display: block;
+        }}
+
         .footer {{
             text-align: center;
             padding: 40px;
@@ -741,6 +917,10 @@ class HTMLReportGenerator:
 
             .header .year {{
                 font-size: 4rem;
+            }}
+
+            .photo-gallery {{
+                grid-template-columns: repeat(2, 1fr);
             }}
         }}
     </style>
@@ -783,6 +963,37 @@ class HTMLReportGenerator:
         <section class="section">
             <h2 class="section-title">🌍 Lugares más visitados</h2>
             {places_html if places_html else '<p style="color: #94a3b8;">No hay información de ubicación disponible</p>'}
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">⭐ Mejores Fotos del Año</h2>
+            <p style="color: #94a3b8; margin-bottom: 20px;">Haz clic en una foto para verla en Immich</p>
+            <div class="photo-gallery">
+                {gallery_html if gallery_html else '<p style="color: #94a3b8;">No hay fotos seleccionadas</p>'}
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">📁 Lista de Archivos</h2>
+            <button class="toggle-btn" onclick="document.getElementById('files-table').classList.toggle('show')">
+                Mostrar/Ocultar Lista de Archivos
+            </button>
+            <div id="files-table" class="collapsible">
+                <table class="files-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>⭐</th>
+                            <th>Nombre</th>
+                            <th>Fecha</th>
+                            <th>Ruta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {files_html}
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <footer class="footer">
