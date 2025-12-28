@@ -76,6 +76,58 @@ def load_dotenv(env_path: Path = None) -> dict:
 # Cargar .env al importar el módulo
 _env_vars = load_dotenv()
 
+
+# ============================================================================
+# MAPEO DE RUTAS (Docker -> Local)
+# ============================================================================
+
+def load_path_mappings(mappings_path: Path = None) -> dict:
+    """
+    Carga mapeos de rutas desde un archivo JSON.
+    Formato: { "/mnt/docker-path": "C:/local/path" }
+    """
+    if mappings_path is None:
+        script_dir = Path(__file__).parent
+        mappings_path = script_dir / 'path_mappings.json'
+
+    if not mappings_path.exists():
+        return {}
+
+    try:
+        with open(mappings_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"⚠️ Error cargando path_mappings.json: {e}")
+        return {}
+
+
+def translate_docker_path(docker_path: str, mappings: dict) -> str:
+    """
+    Traduce una ruta de Docker a la ruta local equivalente.
+    Ejemplo: /mnt/fotos-papa/2009/foto.jpg -> E:/2TB/FotosPapa_Origin/Nico - copia/2009/foto.jpg
+    """
+    if not docker_path or not mappings:
+        return docker_path
+
+    for docker_root, local_root in mappings.items():
+        if docker_path.startswith(docker_root):
+            # Reemplazar la raíz de Docker con la raíz local
+            relative_path = docker_path[len(docker_root):]
+            # Asegurar que no haya doble slash
+            if relative_path.startswith('/'):
+                relative_path = relative_path[1:]
+            # Construir ruta local
+            local_path = os.path.join(local_root, relative_path)
+            # Normalizar para Windows
+            local_path = local_path.replace('/', '\\')
+            return local_path
+
+    return docker_path
+
+
+# Cargar mapeos de rutas
+_path_mappings = load_path_mappings()
+
 # ============================================================================
 # CONFIGURACIÓN
 # ============================================================================
@@ -569,8 +621,15 @@ class HTMLReportGenerator:
             asset_id = photo.get('id')
             filename = photo.get('originalFileName', 'Sin nombre')
             date_str = photo.get('fileCreatedAt', '')[:10]
-            thumb_url = f"{self.client.base_url}/api/assets/{asset_id}/thumbnail?size=preview"
             photo_url = f"{self.client.base_url}/photos/{asset_id}"
+
+            # Ruta local traducida
+            docker_path = photo.get('originalPath', '')
+            local_path = translate_docker_path(docker_path, _path_mappings)
+
+            # Convertir ruta local a URL file:// para el navegador
+            # Reemplazar backslashes por forward slashes y añadir file:///
+            file_url = "file:///" + local_path.replace("\\", "/")
 
             # Información adicional
             exif = photo.get('exifInfo', {})
@@ -579,11 +638,12 @@ class HTMLReportGenerator:
             location = f"{city}, {country}" if city and country else (city or country or '')
 
             gallery_html += f"""
-            <a href="{photo_url}" target="_blank" class="photo-card" title="{filename}">
-                <img src="{thumb_url}" alt="{filename}" loading="lazy" />
+            <a href="{file_url}" target="_blank" class="photo-card" title="{local_path}">
+                <img src="{file_url}" alt="{filename}" loading="lazy" />
                 <div class="photo-overlay">
+                    <div class="photo-filename">{filename}</div>
                     <div class="photo-date">{date_str}</div>
-                    <div class="photo-location">{location}</div>
+                    <div class="photo-path">{local_path[-40:] if len(local_path) > 40 else local_path}</div>
                 </div>
             </a>
             """
@@ -592,11 +652,16 @@ class HTMLReportGenerator:
         files_html = ""
         for i, photo in enumerate(self.stats.best_photos, 1):
             filename = photo.get('originalFileName', 'Sin nombre')
-            original_path = photo.get('originalPath', '')
+            docker_path = photo.get('originalPath', '')
+            # Traducir ruta Docker a ruta local
+            local_path = translate_docker_path(docker_path, _path_mappings)
             date_str = photo.get('fileCreatedAt', '')[:10]
             asset_id = photo.get('id', '')
             is_favorite = "⭐" if photo.get('isFavorite') else ""
             photo_url = f"{self.client.base_url}/photos/{asset_id}"
+
+            # Mostrar ruta truncada pero con tooltip completo
+            display_path = local_path if len(local_path) <= 60 else '...' + local_path[-57:]
 
             files_html += f"""
             <tr>
@@ -604,7 +669,7 @@ class HTMLReportGenerator:
                 <td class="file-fav">{is_favorite}</td>
                 <td class="file-name"><a href="{photo_url}" target="_blank">{filename}</a></td>
                 <td class="file-date">{date_str}</td>
-                <td class="file-path" title="{original_path}">{original_path[:50]}{'...' if len(original_path) > 50 else ''}</td>
+                <td class="file-path" title="{local_path}">{display_path}</td>
             </tr>
             """
 
@@ -812,8 +877,26 @@ class HTMLReportGenerator:
         }}
 
         .photo-date {{
+            font-size: 0.8rem;
+            color: #a78bfa;
+        }}
+
+        .photo-filename {{
             font-size: 0.85rem;
+            font-weight: bold;
             color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+
+        .photo-path {{
+            font-size: 0.65rem;
+            color: #94a3b8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 4px;
         }}
 
         .photo-location {{

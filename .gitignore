@@ -31,3 +31,4 @@ vite.config.js.timestamp-*
 docker/postgres
 scripts/wrapped/.env
 scripts/wrapped/*.html
+scripts/wrapped/path_mappings.json
