@@ -28,4 +28,6 @@ vite.config.js.timestamp-*
 .pnpm-store
 .devcontainer/library
 .devcontainer/.env*
+docker/postgres
 scripts/wrapped/.env
+scripts/wrapped/*.html
