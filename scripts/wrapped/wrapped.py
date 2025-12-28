@@ -175,6 +175,7 @@ class WrappedStats:
     top_people: list = field(default_factory=list)
     top_cities: list = field(default_factory=list)
     top_countries: list = field(default_factory=list)
+    top_tags: list = field(default_factory=list)  # Etiquetas más usadas
     best_photos: list = field(default_factory=list)
     monthly_highlights: dict = field(default_factory=dict)
 
@@ -299,6 +300,14 @@ class ImmichClient:
         """Obtiene ciudades con assets"""
         return self.get('/search/cities')
 
+    def get_all_tags(self) -> list:
+        """Obtiene todas las etiquetas"""
+        try:
+            return self.get('/tags')
+        except Exception as e:
+            print(f"  ⚠️ No se pudieron obtener tags: {e}")
+            return []
+
     def create_album(self, name: str, description: str = "", asset_ids: list = None) -> dict:
         """Crea un nuevo álbum"""
         payload = {
@@ -360,7 +369,11 @@ class WrappedGenerator:
         print("\n🌍 Analizando lugares...")
         self._analyze_places()
 
-        # 6. Seleccionar mejores fotos
+        # 6. Analizar etiquetas
+        print("\n🏷️ Analizando etiquetas...")
+        self._analyze_tags()
+
+        # 7. Seleccionar mejores fotos
         print("\n⭐ Seleccionando mejores fotos...")
         self._select_best_photos()
 
@@ -506,6 +519,42 @@ class WrappedGenerator:
             for i, country in enumerate(self.stats.top_countries[:5], 1):
                 print(f"     {i}. {country['name']}: {country['count']} fotos")
 
+    def _analyze_tags(self):
+        """Analiza etiquetas más usadas"""
+        tags_count = {}
+
+        for asset in self.assets:
+            tags = asset.get('tags', [])
+            for tag in tags:
+                tag_id = tag.get('id')
+                tag_name = tag.get('value', tag.get('name', 'Sin nombre'))
+                tag_color = tag.get('color', '#667eea')
+
+                if tag_id not in tags_count:
+                    tags_count[tag_id] = {
+                        'id': tag_id,
+                        'name': tag_name,
+                        'color': tag_color,
+                        'count': 0
+                    }
+                tags_count[tag_id]['count'] += 1
+
+        # Ordenar por cantidad
+        sorted_tags = sorted(
+            tags_count.values(),
+            key=lambda x: x['count'],
+            reverse=True
+        )
+
+        self.stats.top_tags = sorted_tags[:10]  # Top 10 tags
+
+        if self.stats.top_tags:
+            print(f"  🏷️ Top etiquetas:")
+            for i, tag in enumerate(self.stats.top_tags[:5], 1):
+                print(f"     {i}. {tag['name']}: {tag['count']} fotos")
+        else:
+            print(f"  (No hay etiquetas en las fotos de este año)")
+
     def _select_best_photos(self):
         """Selecciona las mejores fotos del año"""
         # Prioridad: favoritos, luego por cantidad de personas
@@ -613,6 +662,20 @@ class HTMLReportGenerator:
                 <span class="place-name">📍 {city['name']}</span>
                 <span class="place-count">{city['count']}</span>
             </div>
+            """
+
+        # Construir sección de etiquetas
+        tags_html = ""
+        for tag in self.stats.top_tags[:10]:
+            tag_name = tag['name']
+            tag_color = tag.get('color', '#667eea')
+            # Asegurar que el color es válido
+            if not tag_color or tag_color == 'null':
+                tag_color = '#667eea'
+            tags_html += f"""
+            <span class="tag-badge" style="background-color: {tag_color}20; border-color: {tag_color}; color: {tag_color};">
+                🏷️ {tag_name} <span class="tag-count">({tag['count']})</span>
+            </span>
             """
 
         # Construir galería de mejores fotos
@@ -834,6 +897,34 @@ class HTMLReportGenerator:
             color: #f5576c;
         }}
 
+        /* Etiquetas (Tags) */
+        .tags-container {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }}
+
+        .tag-badge {{
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: transform 0.2s ease;
+        }}
+
+        .tag-badge:hover {{
+            transform: scale(1.05);
+        }}
+
+        .tag-count {{
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-left: 4px;
+        }}
+
         /* Galería de fotos */
         .photo-gallery {{
             display: grid;
@@ -1046,6 +1137,13 @@ class HTMLReportGenerator:
         <section class="section">
             <h2 class="section-title">🌍 Lugares más visitados</h2>
             {places_html if places_html else '<p style="color: #94a3b8;">No hay información de ubicación disponible</p>'}
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">🏷️ Etiquetas</h2>
+            <div class="tags-container">
+                {tags_html if tags_html else '<p style="color: #94a3b8;">No hay etiquetas en las fotos de este año</p>'}
+            </div>
         </section>
 
         <section class="section">
