@@ -1,0 +1,2 @@
+# Immich Wrapped - Requisitos
+requests>=2.28.0
