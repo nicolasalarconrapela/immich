@@ -22,7 +22,8 @@
   let isLoading = $state(true);
 
   // View mode
-  let viewMode: 'month' | 'week' | 'day' = $state('month');
+  type ViewMode = 'day' | 'week' | '2weeks' | 'month' | 'year' | 'agenda';
+  let viewMode: ViewMode = $state('month');
 
   // Load asset counts for the current month
   async function loadMonthData() {
