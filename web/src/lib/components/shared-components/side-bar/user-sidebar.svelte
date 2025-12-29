@@ -13,6 +13,8 @@
     mdiAccountOutline,
     mdiArchiveArrowDown,
     mdiArchiveArrowDownOutline,
+    mdiCalendar,
+    mdiCalendarOutline,
     mdiFolderOutline,
     mdiHeart,
     mdiHeartOutline,
@@ -36,6 +38,7 @@
   import SideBarLink from './side-bar-link.svelte';
 
   let isArchiveSelected: boolean = $state(false);
+  let isCalendarSelected: boolean = $state(false);
   let isFavoritesSelected: boolean = $state(false);
   let isMapSelected: boolean = $state(false);
   let isPeopleSelected: boolean = $state(false);
@@ -66,6 +69,13 @@
       icon={isMapSelected ? mdiMap : mdiMapOutline}
     />
   {/if}
+
+  <SideBarLink
+    title={$t('calendar')}
+    href={resolve('/(user)/calendar')}
+    bind:isSelected={isCalendarSelected}
+    icon={isCalendarSelected ? mdiCalendar : mdiCalendarOutline}
+  />
 
   {#if $preferences.people.enabled && $preferences.people.sidebarWeb}
     <SideBarLink
