@@ -3,6 +3,7 @@
   import CalendarGrid from '$lib/components/calendar-page/calendar-grid.svelte';
   import DayDetailPanel from '$lib/components/calendar-page/day-detail-panel.svelte';
   import DayView from '$lib/components/calendar-page/day-view.svelte';
+  import WeekView from '$lib/components/calendar-page/week-view.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import type { AssetResponseDto } from '@immich/sdk';
   import { searchAssets } from '@immich/sdk';
@@ -28,7 +29,7 @@
   // View mode
   let viewMode: ViewMode = $state('month');
 
-  // Load asset counts for the current month
+  // Load assets for month/grid views
   async function loadMonthData() {
     isLoading = true;
 
@@ -81,7 +82,6 @@
         break;
       case 'week':
         currentDate = currentDate.plus({ weeks: direction });
-        loadMonthData();
         break;
       case '2weeks':
         currentDate = currentDate.plus({ weeks: direction * 2 });
@@ -105,15 +105,22 @@
   function goToToday() {
     currentDate = DateTime.now();
     selectedDay = null;
-    if (viewMode !== 'day') {
+    if (viewMode === 'month' || viewMode === '2weeks' || viewMode === 'year') {
       loadMonthData();
     }
   }
 
-  // Select a day (from month view)
+  // Select a day (from month/week view)
   function selectDay(day: DateTime, assets: AssetResponseDto[]) {
     selectedDay = day;
     selectedAssets = assets;
+  }
+
+  // Go to day view for a specific day
+  function goToDayView(day: DateTime) {
+    currentDate = day;
+    viewMode = 'day';
+    selectedDay = null;
   }
 
   // Close day panel
@@ -122,16 +129,9 @@
     selectedAssets = [];
   }
 
-  // Navigate to day view from month
-  function goToDayView(day: DateTime) {
-    currentDate = day;
-    viewMode = 'day';
-    selectedDay = null;
-  }
-
-  // Initial load
+  // Load data on mount and view change
   $effect(() => {
-    if (viewMode !== 'day') {
+    if (viewMode === 'month' || viewMode === '2weeks' || viewMode === 'year') {
       loadMonthData();
     }
   });
@@ -151,6 +151,8 @@
   <div class="calendar-wrapper">
     {#if viewMode === 'day'}
       <DayView {currentDate} onNavigate={navigate} />
+    {:else if viewMode === 'week'}
+      <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} />
     {:else if viewMode === 'month'}
       <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
 
@@ -161,7 +163,7 @@
       <!-- Placeholder for other views -->
       <div class="coming-soon">
         <p>Vista "{viewMode}" próximamente...</p>
-        <p class="hint">Por ahora, usa la vista Mes o Día</p>
+        <p class="hint">Por ahora, usa Día, Semana o Mes</p>
       </div>
     {/if}
   </div>
