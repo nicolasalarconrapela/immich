@@ -1,57 +1,63 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import ImageThumbnail from '$lib/components/assets/thumbnail/image-thumbnail.svelte';
   import { AppRoute } from '$lib/constants';
   import type { AssetResponseDto } from '@immich/sdk';
   import { AssetMediaSize, searchAssets } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiArrowLeft, mdiLoading } from '@mdi/js';
+  import { mdiCamera, mdiChevronLeft, mdiChevronRight, mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
-  import { t } from 'svelte-i18n';
 
   interface Props {
-    date: DateTime;
-    onBack: () => void;
+    currentDate: DateTime;
+    onNavigate: (direction: number) => void;
   }
 
-  let { date, onBack }: Props = $props();
+  let { currentDate, onNavigate }: Props = $props();
 
   let assets: AssetResponseDto[] = $state([]);
   let isLoading = $state(true);
 
-  const formattedDate = $derived(date.toLocaleString(DateTime.DATE_FULL));
+  // Hours of the day (0-23)
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  // Format date for header
+  const formattedDate = $derived(currentDate.toFormat('cccc, d MMMM'));
+  const isToday = $derived(currentDate.hasSame(DateTime.now(), 'day'));
 
   // Group assets by hour
   const assetsByHour = $derived.by(() => {
     const hourMap = new Map<number, AssetResponseDto[]>();
 
+    // Initialize all hours
+    for (let h = 0; h < 24; h++) {
+      hourMap.set(h, []);
+    }
+
     for (const asset of assets) {
       const assetDate = DateTime.fromISO(asset.fileCreatedAt);
       const hour = assetDate.hour;
-
-      if (!hourMap.has(hour)) {
-        hourMap.set(hour, []);
-      }
       hourMap.get(hour)!.push(asset);
     }
 
-    // Sort by hour
-    return Array.from(hourMap.entries()).sort((a, b) => a[0] - b[0]);
+    return hourMap;
   });
+
+  // Total photos for the day
+  const totalPhotos = $derived(assets.length);
 
   // Load assets for this day
   async function loadDayAssets() {
     isLoading = true;
 
-    const startOfDay = date.startOf('day');
-    const endOfDay = date.endOf('day');
+    const startOfDay = currentDate.startOf('day');
+    const endOfDay = currentDate.endOf('day');
 
     try {
       const result = await searchAssets({
         metadataSearchDto: {
           takenAfter: startOfDay.toISO() ?? undefined,
           takenBefore: endOfDay.toISO() ?? undefined,
-          size: 200,
+          size: 500,
           withExif: true,
         },
       });
@@ -72,91 +78,274 @@
     return DateTime.fromObject({ hour }).toFormat('HH:mm');
   }
 
+  // Reload when date changes
   $effect(() => {
+    currentDate; // dependency
     loadDayAssets();
   });
 </script>
 
-<div class="flex flex-col h-full">
-  <!-- Header -->
-  <div class="flex items-center gap-4 p-4 border-b dark:border-gray-700">
-    <button
-      type="button"
-      class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-      onclick={onBack}
-      title={$t('back')}
-    >
-      <Icon icon={mdiArrowLeft} size="24" />
+<div class="day-view">
+  <!-- Day header -->
+  <div class="day-header">
+    <button type="button" class="nav-btn" onclick={() => onNavigate(-1)}>
+      <Icon icon={mdiChevronLeft} size="24" />
     </button>
 
-    <div>
-      <h2 class="text-xl font-semibold">{formattedDate}</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        {assets.length}
-        {$t('photos')}
-      </p>
+    <div class="date-info">
+      <span class="date-text" class:today={isToday}>{formattedDate}</span>
+      {#if totalPhotos > 0}
+        <span class="photo-count">
+          <Icon icon={mdiCamera} size="14" />
+          {totalPhotos} fotos
+        </span>
+      {/if}
     </div>
+
+    <button type="button" class="nav-btn" onclick={() => onNavigate(1)}>
+      <Icon icon={mdiChevronRight} size="24" />
+    </button>
   </div>
 
-  <!-- Content -->
+  <!-- Timeline -->
   {#if isLoading}
-    <div class="flex items-center justify-center flex-1">
-      <Icon icon={mdiLoading} size="48" class="animate-spin text-immich-primary" />
-    </div>
-  {:else if assets.length === 0}
-    <div class="flex items-center justify-center flex-1 text-gray-500">
-      {$t('no_results')}
+    <div class="loading">
+      <Icon icon={mdiLoading} size="48" class="animate-spin" />
     </div>
   {:else}
-    <div class="flex-1 overflow-y-auto p-4">
-      <!-- Timeline view -->
-      <div class="relative">
-        <!-- Timeline line -->
-        <div class="absolute left-[60px] top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+    <div class="timeline">
+      {#each hours as hour}
+        {@const hourAssets = assetsByHour.get(hour) || []}
+        {@const hasAssets = hourAssets.length > 0}
 
-        {#each assetsByHour as [hour, hourAssets]}
-          <div class="relative flex gap-4 mb-6">
-            <!-- Hour label -->
-            <div class="w-[60px] shrink-0 text-right pr-4">
-              <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {formatHour(hour)}
-              </span>
-            </div>
+        <div class="hour-row" class:has-assets={hasAssets}>
+          <!-- Hour label -->
+          <div class="hour-label">
+            <span class="hour-time">{formatHour(hour)}</span>
+          </div>
 
-            <!-- Timeline dot -->
-            <div
-              class="absolute left-[56px] top-1 w-3 h-3 rounded-full bg-immich-primary dark:bg-immich-dark-primary z-10"
-            ></div>
+          <!-- Timeline line and dot -->
+          <div class="timeline-marker">
+            <div class="timeline-line"></div>
+            {#if hasAssets}
+              <div class="timeline-dot"></div>
+            {/if}
+          </div>
 
-            <!-- Assets grid -->
-            <div class="flex-1 ml-4">
-              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                {#each hourAssets as asset}
-                  <button
-                    type="button"
-                    class="aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-immich-primary
-                           transition-all hover:scale-105"
-                    onclick={() => openAsset(asset.id)}
-                  >
-                    <ImageThumbnail
-                      url={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
-                      altText={asset.originalFileName}
-                      widthStyle="100%"
+          <!-- Content area -->
+          <div class="hour-content">
+            {#if hasAssets}
+              <div class="assets-grid">
+                {#each hourAssets.slice(0, 8) as asset, i}
+                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset.id)}>
+                    <img
+                      src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
+                      alt=""
+                      loading="lazy"
                     />
+                    {#if i === 7 && hourAssets.length > 8}
+                      <div class="more-overlay">
+                        +{hourAssets.length - 8}
+                      </div>
+                    {/if}
                   </button>
                 {/each}
               </div>
-            </div>
+            {/if}
           </div>
-        {/each}
-      </div>
+        </div>
+      {/each}
     </div>
   {/if}
 </div>
 
 <style>
-  /* Custom scrollbar for the day view */
-  .overflow-y-auto {
-    scrollbar-width: thin;
+  .day-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #0a0a0a;
+  }
+
+  .day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid #222;
+    position: sticky;
+    top: 0;
+    background: #0a0a0a;
+    z-index: 10;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .date-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .date-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: white;
+    text-transform: capitalize;
+  }
+
+  .date-text.today {
+    color: #4ade80;
+  }
+
+  .photo-count {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: #888;
+  }
+
+  .loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--immich-primary);
+  }
+
+  .timeline {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1rem;
+  }
+
+  .hour-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: 48px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+  }
+
+  .hour-row.has-assets {
+    opacity: 1;
+    min-height: auto;
+    padding: 0.5rem 0;
+  }
+
+  .hour-label {
+    width: 50px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .hour-time {
+    font-size: 0.75rem;
+    color: #666;
+    font-weight: 500;
+  }
+
+  .has-assets .hour-time {
+    color: #f97316;
+  }
+
+  .timeline-marker {
+    width: 24px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .timeline-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #333;
+  }
+
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f97316;
+    border: 2px solid #0a0a0a;
+    z-index: 1;
+    margin-top: 4px;
+  }
+
+  .hour-content {
+    flex: 1;
+    min-width: 0;
+    padding-left: 0.75rem;
+  }
+
+  .assets-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .asset-thumb {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+
+  .asset-thumb:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .asset-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .more-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  @media (min-width: 768px) {
+    .asset-thumb {
+      width: 80px;
+      height: 80px;
+    }
   }
 </style>

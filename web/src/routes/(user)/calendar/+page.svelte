@@ -2,16 +2,20 @@
   import CalendarControls from '$lib/components/calendar-page/calendar-controls.svelte';
   import CalendarGrid from '$lib/components/calendar-page/calendar-grid.svelte';
   import DayDetailPanel from '$lib/components/calendar-page/day-detail-panel.svelte';
+  import DayView from '$lib/components/calendar-page/day-view.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import type { AssetResponseDto } from '@immich/sdk';
   import { searchAssets } from '@immich/sdk';
   import { DateTime } from 'luxon';
   import { t } from 'svelte-i18n';
 
-  // Current viewing month/year
+  // View mode type
+  type ViewMode = 'day' | 'week' | '2weeks' | 'month' | 'year' | 'agenda';
+
+  // Current viewing date
   let currentDate = $state(DateTime.now());
 
-  // Selected day data
+  // Selected day data (for month view panel)
   let selectedDay: DateTime | null = $state(null);
   let selectedAssets: AssetResponseDto[] = $state([]);
 
@@ -22,7 +26,6 @@
   let isLoading = $state(true);
 
   // View mode
-  type ViewMode = 'day' | 'week' | '2weeks' | 'month' | 'year' | 'agenda';
   let viewMode: ViewMode = $state('month');
 
   // Load asset counts for the current month
@@ -68,21 +71,46 @@
     }
   }
 
-  // Navigate to previous/next month
-  function navigateMonth(direction: number) {
-    currentDate = currentDate.plus({ months: direction });
+  // Navigate based on view mode
+  function navigate(direction: number) {
     selectedDay = null;
-    loadMonthData();
+
+    switch (viewMode) {
+      case 'day':
+        currentDate = currentDate.plus({ days: direction });
+        break;
+      case 'week':
+        currentDate = currentDate.plus({ weeks: direction });
+        loadMonthData();
+        break;
+      case '2weeks':
+        currentDate = currentDate.plus({ weeks: direction * 2 });
+        loadMonthData();
+        break;
+      case 'month':
+        currentDate = currentDate.plus({ months: direction });
+        loadMonthData();
+        break;
+      case 'year':
+        currentDate = currentDate.plus({ years: direction });
+        loadMonthData();
+        break;
+      default:
+        currentDate = currentDate.plus({ months: direction });
+        loadMonthData();
+    }
   }
 
   // Navigate to today
   function goToToday() {
     currentDate = DateTime.now();
     selectedDay = null;
-    loadMonthData();
+    if (viewMode !== 'day') {
+      loadMonthData();
+    }
   }
 
-  // Select a day
+  // Select a day (from month view)
   function selectDay(day: DateTime, assets: AssetResponseDto[]) {
     selectedDay = day;
     selectedAssets = assets;
@@ -94,9 +122,18 @@
     selectedAssets = [];
   }
 
+  // Navigate to day view from month
+  function goToDayView(day: DateTime) {
+    currentDate = day;
+    viewMode = 'day';
+    selectedDay = null;
+  }
+
   // Initial load
   $effect(() => {
-    loadMonthData();
+    if (viewMode !== 'day') {
+      loadMonthData();
+    }
   });
 </script>
 
@@ -104,18 +141,28 @@
   {#snippet buttons()}
     <CalendarControls
       {currentDate}
-      onPrevious={() => navigateMonth(-1)}
-      onNext={() => navigateMonth(1)}
+      onPrevious={() => navigate(-1)}
+      onNext={() => navigate(1)}
       onToday={goToToday}
       bind:viewMode
     />
   {/snippet}
 
   <div class="calendar-wrapper">
-    <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
+    {#if viewMode === 'day'}
+      <DayView {currentDate} onNavigate={navigate} />
+    {:else if viewMode === 'month'}
+      <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
 
-    {#if selectedDay && selectedAssets.length > 0}
-      <DayDetailPanel date={selectedDay} assets={selectedAssets} onClose={closePanel} />
+      {#if selectedDay && selectedAssets.length > 0}
+        <DayDetailPanel date={selectedDay} assets={selectedAssets} onClose={closePanel} />
+      {/if}
+    {:else}
+      <!-- Placeholder for other views -->
+      <div class="coming-soon">
+        <p>Vista "{viewMode}" próximamente...</p>
+        <p class="hint">Por ahora, usa la vista Mes o Día</p>
+      </div>
     {/if}
   </div>
 </UserPageLayout>
@@ -125,5 +172,21 @@
     height: 100%;
     width: 100%;
     background: #0a0a0a;
+  }
+
+  .coming-soon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-size: 1.25rem;
+  }
+
+  .hint {
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    color: #444;
   }
 </style>
