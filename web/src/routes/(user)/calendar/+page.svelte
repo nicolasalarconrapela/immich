@@ -295,10 +295,14 @@
   {#if viewedAsset}
     <AssetLightbox
       asset={viewedAsset}
+      assets={lightboxAssets}
       onClose={closeLightbox}
       onToggleSelect={toggleSelection}
       onToggleFavorite={toggleFavorite}
       onRatingChange={(rating) => viewedAsset && handleRatingChange(viewedAsset, rating)}
+      onNavigateTo={(a) => {
+        viewedAsset = a;
+      }}
       isSelected={selectedAssets.some((a) => a.id === viewedAsset?.id)}
       onNext={lightboxAssets.length > 1 &&
       lightboxAssets.findIndex((a) => a.id === viewedAsset?.id) < lightboxAssets.length - 1
