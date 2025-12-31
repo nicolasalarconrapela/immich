@@ -1,11 +1,11 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { AppRoute } from '$lib/constants';
+  import type { AssetResponseDto } from '@immich/sdk';
+  import { AssetMediaSize, searchAssets } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiCamera, mdiChevronLeft, mdiChevronRight, mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
-  import { searchAssets, AssetMediaSize } from '@immich/sdk';
-  import type { AssetResponseDto } from '@immich/sdk';
-  import { goto } from '$app/navigation';
-  import { AppRoute } from '$lib/constants';
 
   interface DayData {
     date: DateTime;
@@ -160,22 +160,33 @@
 </div>
 
 <style>
+  :global(:root) {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --border-color: #334155;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+  }
+
   .week-view {
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: #0a0a0a;
+    background: var(--bg-main);
+    color: var(--text-main);
   }
 
   .week-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid #222;
+    padding: 1rem 2rem;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
-    background: #0a0a0a;
     z-index: 10;
   }
 
@@ -183,17 +194,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
+    background: rgba(255, 255, 255, 0.05);
     border: none;
-    color: white;
+    color: var(--text-main);
     padding: 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: 50%;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
   }
 
   .nav-btn:hover {
     background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
   }
 
   .week-info {
@@ -204,18 +216,19 @@
   }
 
   .week-label {
-    font-size: 1.125rem;
-    font-weight: 500;
-    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
     text-transform: capitalize;
   }
 
   .photo-count {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    color: #888;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
   }
 
   .loading {
@@ -223,27 +236,28 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--immich-primary);
+    color: var(--accent);
   }
 
   .week-grid {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 1px;
-    background: #222;
-    overflow: hidden;
+    gap: 1px; /* Gap for borders */
+    background: var(--border-color); /* Lines color */
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .day-column {
     display: flex;
     flex-direction: column;
-    background: #0a0a0a;
+    background: var(--bg-main);
     min-height: 0;
   }
 
   .day-column.today {
-    background: #111;
+    background: rgba(56, 189, 248, 0.05); /* Very subtle accent tint */
   }
 
   .day-header {
@@ -251,77 +265,76 @@
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.75rem 0.5rem;
+    padding: 1rem 0.5rem;
     background: none;
     border: none;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     transition: background 0.2s;
     width: 100%;
   }
 
   .day-header:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
   }
 
   .day-name {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    color: #666;
-    font-weight: 500;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
   }
 
   .today .day-name {
-    color: #f97316;
+    color: var(--accent);
   }
 
   .day-number {
-    font-size: 1.25rem;
-    font-weight: 500;
-    color: white;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-main);
+    line-height: 1;
   }
 
   .today-number {
-    background: #22c55e;
-    color: white;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
+    color: var(--accent);
   }
 
   .day-count {
-    font-size: 0.65rem;
-    color: #888;
-    background: #222;
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.15rem 0.5rem;
+    border-radius: 1rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
   }
 
   .has-assets .day-count {
-    background: #f97316;
-    color: white;
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent);
   }
 
   .day-content {
     flex: 1;
     overflow-y: auto;
-    padding: 0.25rem;
+    padding: 0.5rem;
+    /* Custom Scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
   }
 
   .assets-scroll {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.5rem;
   }
 
   .asset-thumb {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 4px;
+    border-radius: 0.5rem;
     overflow: hidden;
     border: none;
     padding: 0;
@@ -329,22 +342,26 @@
     transition:
       transform 0.2s,
       opacity 0.2s;
+    background: #000;
+    position: relative;
   }
 
   .asset-thumb:hover {
-    opacity: 0.8;
+    transform: scale(1.02);
+    z-index: 2;
   }
 
   .asset-thumb img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
   }
 
   .more-indicator {
     text-align: center;
-    font-size: 0.7rem;
-    color: #666;
+    font-size: 0.75rem;
+    color: var(--text-muted);
     padding: 0.5rem;
   }
 
@@ -353,34 +370,39 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #333;
-    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.1);
+    font-size: 0.8rem;
+    font-style: italic;
   }
 
-  /* Responsive: Stack columns on mobile */
+  /* Responsive */
   @media (max-width: 768px) {
     .week-grid {
       grid-template-columns: 1fr;
-      overflow-y: auto;
+      gap: 0; /* No vertical lines on mobile list */
     }
 
     .day-column {
       flex-direction: row;
-      min-height: auto;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--border-color);
     }
 
     .day-header {
       flex-direction: row;
-      gap: 0.75rem;
-      width: auto;
-      padding: 1rem;
+      gap: 1rem;
+      width: 80px; /* Fixed width sidebar on mobile */
+      padding: 1rem 0.5rem;
       border-bottom: none;
-      border-right: 1px solid #222;
+      border-right: 1px solid var(--border-color);
+      justify-content: center;
+    }
+
+    .day-header .day-count {
+      display: none; /* Hide count in sidebar to save space */
     }
 
     .day-content {
-      padding: 0.5rem;
+      padding: 0.75rem;
     }
 
     .assets-scroll {
@@ -390,13 +412,13 @@
     }
 
     .asset-thumb {
-      width: 60px;
-      height: 60px;
+      width: 64px;
+      height: 64px;
     }
 
     .no-assets {
       justify-content: flex-start;
-      padding-left: 1rem;
+      padding-left: 0.5rem;
     }
   }
 </style>

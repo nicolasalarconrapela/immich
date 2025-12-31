@@ -104,10 +104,10 @@
 
   <!-- View Switcher (Tab Style) -->
   <div class="view-switcher">
-    <button class="segment-btn" class:active={viewMode === 'year'} onclick={() => selectView('year')}> Year </button>
-    <button class="segment-btn" class:active={viewMode === 'month'} onclick={() => selectView('month')}> Month </button>
-    <button class="segment-btn" class:active={viewMode === 'week'} onclick={() => selectView('week')}> Week </button>
-    <button class="segment-btn" class:active={viewMode === 'day'} onclick={() => selectView('day')}> Day </button>
+    <button class="segment-btn" class:active={viewMode === 'year'} onclick={() => selectView('year')}> Año </button>
+    <button class="segment-btn" class:active={viewMode === 'month'} onclick={() => selectView('month')}> Mes </button>
+    <button class="segment-btn" class:active={viewMode === 'week'} onclick={() => selectView('week')}> Semana </button>
+    <button class="segment-btn" class:active={viewMode === 'day'} onclick={() => selectView('day')}> Día </button>
   </div>
 </div>
 
