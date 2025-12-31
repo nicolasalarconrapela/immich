@@ -1,9 +1,8 @@
 <script lang="ts">
   import { AssetMediaSize, searchAssets, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCalendarBlank, mdiChevronLeft, mdiChevronRight, mdiImageMultiple, mdiLoading } from '@mdi/js';
+  import { mdiCalendarBlank, mdiChevronLeft, mdiChevronRight, mdiImageMultiple } from '@mdi/js';
   import { DateTime } from 'luxon';
-  import { fade } from 'svelte/transition';
 
   interface Props {
     currentDate: DateTime;
@@ -49,7 +48,7 @@
 
   async function loadAssets() {
     isLoading = true;
-    yearData = getEmptyMonths(); // Reset with empty structure
+    yearData = getEmptyMonths();
 
     try {
       const promises = [];
@@ -64,13 +63,13 @@
             metadataSearchDto: {
               takenAfter: startOfMonth.toISO() ?? undefined,
               takenBefore: endOfMonth.toISO() ?? undefined,
-              size: 50, // Get enough for covers + local highlights
+              size: 50,
               withExif: false,
             },
           }).then((result) => ({
             monthIndex: m,
             name: monthDate.toFormat('MMMM'),
-            // @ts-ignore - The SDK types might be missing 'total' on some versions but it exists in paginated responses
+            // @ts-ignore
             totalCount: result.assets.total ?? result.assets.items.length,
             items: result.assets.items,
           })),
@@ -81,21 +80,15 @@
 
       yearData = results.map((data) => {
         const mAssets = data.items;
-
-        // 1. Get Covers
         const coverAssets = mAssets.slice(0, 3);
-
-        // 2. Find local "Events" (Days with most photos WITHIN the fetched set)
         const daysInMonth = new Map<string, number>();
+
         mAssets.forEach((a) => {
           const dKey = DateTime.fromISO(a.fileCreatedAt).toISODate();
           if (dKey) daysInMonth.set(dKey, (daysInMonth.get(dKey) || 0) + 1);
         });
 
-        // Top 2 days
-        const sortedDays = [...daysInMonth.entries()]
-          .sort((a, b) => b[1] - a[1]) // Sort by count desc
-          .slice(0, 2);
+        const sortedDays = [...daysInMonth.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
 
         const topDays = sortedDays.map(([dKey, count]) => {
           const date = DateTime.fromISO(dKey);
@@ -126,6 +119,9 @@
     return `/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`;
   }
 
+  const totalYearPhotos = $derived(yearData.reduce((acc, m) => acc + m.totalCount, 0));
+  const totalYearEvents = $derived(yearData.reduce((acc, m) => acc + m.topDays.length, 0));
+
   $effect(() => {
     currentDate;
     loadAssets();
@@ -133,24 +129,37 @@
 </script>
 
 <div class="year-view-container">
-  <!-- Header -->
-  <header class="header">
-    <div class="nav-controls">
-      <button class="icon-btn" onclick={() => onNavigate(-1)} aria-label="Previous Year">
-        <Icon icon={mdiChevronLeft} size="24" />
-      </button>
-      <h1 class="year-title">{year}</h1>
-      <button class="icon-btn" onclick={() => onNavigate(1)} aria-label="Next Year">
-        <Icon icon={mdiChevronRight} size="24" />
-      </button>
+  <!-- Summary Header -->
+  <header class="summary-header">
+    <div class="summary-top">
+      <div>
+        <h1 class="summary-title">{year} Summary</h1>
+        <p class="summary-subtitle">Year in Review</p>
+      </div>
+
+      <div class="header-actions">
+        <!-- Navigation -->
+        <div class="nav-controls">
+          <button class="icon-btn" onclick={() => onNavigate(-1)} aria-label="Previous Year">
+            <Icon icon={mdiChevronLeft} size="24" />
+          </button>
+          <button class="icon-btn" onclick={() => onNavigate(1)} aria-label="Next Year">
+            <Icon icon={mdiChevronRight} size="24" />
+          </button>
+        </div>
+      </div>
     </div>
 
-    {#if isLoading}
-      <div class="loading-badge" transition:fade>
-        <Icon icon={mdiLoading} size="16" class="animate-spin" />
-        <span>Updating...</span>
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-value">{isLoading ? '-' : totalYearPhotos.toLocaleString()}</span>
+        <span class="stat-label">PHOTOS</span>
       </div>
-    {/if}
+      <div class="stat-card">
+        <span class="stat-value">{isLoading ? '-' : totalYearEvents.toLocaleString()}</span>
+        <span class="stat-label">EVENTS</span>
+      </div>
+    </div>
   </header>
 
   <!-- Grid -->
@@ -251,28 +260,42 @@
     color: var(--text-primary);
   }
 
-  /* Header */
-  .header {
+  /* Header Summary Styles */
+  .summary-header {
+    margin-bottom: 3rem;
+  }
+
+  .summary-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+  }
+
+  .summary-title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: white;
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  .summary-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0 0;
+    font-weight: 500;
+  }
+
+  .header-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 2rem;
+    gap: 1rem;
   }
 
   .nav-controls {
     display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .year-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin: 0;
-    line-height: 1;
-    background: linear-gradient(to right, #fff, #94a3b8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    gap: 0.5rem;
   }
 
   .icon-btn {
@@ -293,16 +316,40 @@
     transform: scale(1.1);
   }
 
-  .loading-badge {
+  .stats-row {
     display: flex;
+    gap: 1.5rem;
+  }
+
+  .stat-card {
+    background: #162032; /* Slightly glossy/dark card */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    background: rgba(56, 189, 248, 0.1);
-    color: var(--accent-color);
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-size: 0.875rem;
-    font-weight: 500;
+    justify-content: center;
+    min-width: 160px;
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
   }
 
   /* Grid Layout */
@@ -538,8 +585,17 @@
       grid-template-columns: 1fr;
     }
 
-    .year-title {
+    .summary-title {
       font-size: 2rem;
+    }
+
+    .stats-row {
+      gap: 1rem;
+    }
+
+    .stat-card {
+      padding: 1rem;
+      flex: 1;
     }
   }
 </style>
