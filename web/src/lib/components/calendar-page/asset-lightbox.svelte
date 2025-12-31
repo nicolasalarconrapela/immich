@@ -1,4 +1,5 @@
 <script lang="ts">
+  import StarRating from '$lib/elements/StarRating.svelte';
   import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import {
@@ -18,12 +19,22 @@
     onClose: () => void;
     onToggleSelect?: (asset: AssetResponseDto) => void;
     onToggleFavorite?: (asset: AssetResponseDto) => void;
+    onRatingChange?: (rating: number) => void;
     isSelected?: boolean;
     onNext?: () => void;
     onPrevious?: () => void;
   }
 
-  let { asset, onClose, onToggleSelect, onToggleFavorite, isSelected = false, onNext, onPrevious }: Props = $props();
+  let {
+    asset,
+    onClose,
+    onToggleSelect,
+    onToggleFavorite,
+    onRatingChange,
+    isSelected = false,
+    onNext,
+    onPrevious,
+  }: Props = $props();
 
   let previewUrl = $derived(`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Preview}`);
 
@@ -62,6 +73,13 @@
     </button>
 
     <div class="spacer"></div>
+
+    <!-- Star Rating -->
+    {#if onRatingChange}
+      <div class="rating-container">
+        <StarRating rating={asset.exifInfo?.rating || 0} onRating={onRatingChange} />
+      </div>
+    {/if}
 
     <!-- Favorite Toggle -->
     {#if onToggleFavorite}
@@ -145,6 +163,17 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .rating-container {
+    padding: 0 1rem;
+    color: white; /* Ensure stars are visible if they rely on currentColor */
+    /* Force proper color on StarRating children if possible, primarily via class override in StarRating or here */
+  }
+
+  /* Override StarRating styles to work in dark overlay */
+  :global(.rating-container .text-primary) {
+    color: white !important;
   }
 
   .icon-btn:hover {

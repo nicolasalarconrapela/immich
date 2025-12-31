@@ -216,6 +216,39 @@
     }
   }
 
+  async function handleRatingChange(asset: AssetResponseDto, newRating: number) {
+    try {
+      await updateAsset({
+        id: asset.id,
+        updateAssetDto: {
+          rating: newRating,
+        },
+      });
+
+      // Update local state
+      if (viewedAsset?.id === asset.id) {
+        // Create a new object to trigger reactivity, ensuring exifInfo exists
+        const updatedExif = { ...(viewedAsset.exifInfo || {}), rating: newRating };
+        // @ts-ignore
+        viewedAsset = { ...viewedAsset, exifInfo: updatedExif };
+      }
+
+      // Update in lightboxAssets context
+      const contextIndex = lightboxAssets.findIndex((a) => a.id === asset.id);
+      if (contextIndex !== -1) {
+        const newAssets = [...lightboxAssets];
+        const currentAsset = newAssets[contextIndex];
+        const updatedExif = { ...(currentAsset.exifInfo || {}), rating: newRating };
+        // @ts-ignore
+        newAssets[contextIndex] = { ...currentAsset, exifInfo: updatedExif };
+        lightboxAssets = newAssets;
+      }
+    } catch (error) {
+      console.error('Failed to update rating:', error);
+      toastManager.error($t('errors.cant_apply_changes'));
+    }
+  }
+
   // Load data on mount
   $effect(() => {
     if (viewMode === 'month' || viewMode === '2weeks') {
@@ -265,6 +298,7 @@
       onClose={closeLightbox}
       onToggleSelect={toggleSelection}
       onToggleFavorite={toggleFavorite}
+      onRatingChange={(rating) => viewedAsset && handleRatingChange(viewedAsset, rating)}
       isSelected={selectedAssets.some((a) => a.id === viewedAsset?.id)}
       onNext={lightboxAssets.length > 1 &&
       lightboxAssets.findIndex((a) => a.id === viewedAsset?.id) < lightboxAssets.length - 1
