@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Icon } from '@immich/ui';
-  import { mdiCalendar, mdiChevronDown, mdiChevronLeft, mdiChevronRight } from '@mdi/js';
+  import { mdiCalendar, mdiChevronLeft, mdiChevronRight } from '@mdi/js';
   import { DateTime } from 'luxon';
   import { t } from 'svelte-i18n';
 
@@ -102,35 +102,12 @@
     />
   </div>
 
-  <!-- View mode selector -->
-  <div class="view-selector-wrapper">
-    <button
-      type="button"
-      class="view-selector"
-      onclick={(e) => {
-        e.stopPropagation();
-        toggleDropdown();
-      }}
-    >
-      <span>{currentViewLabel}</span>
-      <Icon icon={mdiChevronDown} size="18" />
-    </button>
-
-    {#if showDropdown}
-      <div class="dropdown" onclick={(e) => e.stopPropagation()}>
-        {#each viewOptions as option}
-          <button
-            type="button"
-            class="dropdown-item"
-            class:active={viewMode === option.value}
-            onclick={() => selectView(option.value)}
-          >
-            <span class="item-label">{option.label}</span>
-            <span class="item-shortcut">{option.shortcut}</span>
-          </button>
-        {/each}
-      </div>
-    {/if}
+  <!-- View Switcher (Tab Style) -->
+  <div class="view-switcher">
+    <button class="segment-btn" class:active={viewMode === 'year'} onclick={() => selectView('year')}> Year </button>
+    <button class="segment-btn" class:active={viewMode === 'month'} onclick={() => selectView('month')}> Month </button>
+    <button class="segment-btn" class:active={viewMode === 'week'} onclick={() => selectView('week')}> Week </button>
+    <button class="segment-btn" class:active={viewMode === 'day'} onclick={() => selectView('day')}> Day </button>
   </div>
 </div>
 
@@ -139,6 +116,8 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .nav-buttons {
@@ -214,88 +193,43 @@
     pointer-events: none;
   }
 
-  .view-selector-wrapper {
-    position: relative;
-    margin-left: auto; /* Push to right if desired, or keep normal flow */
-  }
-
-  .view-selector {
+  /* Segmented Control (Tabs) */
+  .view-switcher {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
     background: #2a2a2a;
     border: 1px solid #444;
-    color: white;
+    border-radius: 0.75rem;
+    padding: 4px;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .segment-btn {
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    padding: 0.35rem 1rem;
+    border-radius: 0.5rem;
     font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 38px;
   }
 
-  .view-selector:hover {
-    background: #333;
-    border-color: #555;
+  .segment-btn:hover {
+    color: white;
   }
 
-  .dropdown {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    right: 0; /* Align right to avoid overflow */
-    background: #1f1f1f;
-    border: 1px solid #333;
-    border-radius: 0.75rem;
-    min-width: 180px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-    animation: fadeIn 0.15s ease;
-    overflow: hidden;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .dropdown-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: none;
-    border: none;
-    color: #e5e5e5;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .dropdown-item:hover {
-    background: #2a2a2a;
-  }
-
-  .dropdown-item.active {
-    color: #4ade80;
-  }
-
-  .item-shortcut {
-    color: #666;
-    font-size: 0.75rem;
-    font-weight: 500;
+  .segment-btn.active {
+    background: #4ade80; /* Accent Color */
+    color: #000;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   @media (max-width: 640px) {
     .date-controls {
-      display: none; /* Simplify on mobile for now, or adapt */
+      display: none;
     }
   }
 </style>
