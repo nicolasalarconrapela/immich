@@ -1,9 +1,10 @@
 <script lang="ts">
   import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCheckCircle, mdiCheckCircleOutline, mdiClose } from '@mdi/js';
+  import { mdiCheckCircle, mdiCheckCircleOutline, mdiChevronLeft, mdiChevronRight, mdiClose } from '@mdi/js';
   import { onDestroy, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
+
   interface Props {
     asset: AssetResponseDto;
     onClose: () => void;
@@ -16,7 +17,6 @@
   let { asset, onClose, onToggleSelect, isSelected = false, onNext, onPrevious }: Props = $props();
 
   let previewUrl = $derived(`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Preview}`);
-  let originalUrl = $derived(`/api/assets/${asset.id}/original`);
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -46,7 +46,7 @@
 <div class="lightbox-overlay" transition:fade={{ duration: 200 }}>
   <!-- Toolbar -->
   <div class="toolbar">
-    <button class="icon-btn" onclick={onClose} aria-label="Close">
+    <button type="button" class="icon-btn" onclick={onClose} aria-label="Close">
       <Icon icon={mdiClose} size="24" />
     </button>
 
@@ -55,6 +55,7 @@
     <!-- Selection Toggle -->
     {#if onToggleSelect}
       <button
+        type="button"
         class="icon-btn select-btn"
         class:selected={isSelected}
         onclick={() => onToggleSelect && onToggleSelect(asset)}
@@ -73,13 +74,13 @@
 
   <!-- Navigation Arrows -->
   {#if onPrevious}
-    <button class="nav-arrow left" onclick={onPrevious} aria-label="Previous">
+    <button type="button" class="nav-arrow left" onclick={onPrevious} aria-label="Previous">
       <Icon icon={mdiChevronLeft} size="48" />
     </button>
   {/if}
 
   {#if onNext}
-    <button class="nav-arrow right" onclick={onNext} aria-label="Next">
+    <button type="button" class="nav-arrow right" onclick={onNext} aria-label="Next">
       <Icon icon={mdiChevronRight} size="48" />
     </button>
   {/if}
@@ -94,6 +95,7 @@
     display: flex;
     flex-direction: column;
     color: white;
+    user-select: none;
   }
 
   .toolbar {

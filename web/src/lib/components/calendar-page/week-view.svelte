@@ -17,7 +17,7 @@
     currentDate: DateTime;
     onNavigate: (direction: number) => void;
     onDaySelect: (date: DateTime) => void;
-    onAssetClick?: (asset: AssetResponseDto) => void;
+    onAssetClick?: (asset: AssetResponseDto, context: AssetResponseDto[]) => void;
   }
 
   let { currentDate, onNavigate, onDaySelect, onAssetClick }: Props = $props();
@@ -74,9 +74,9 @@
     }
   }
 
-  function openAsset(asset: AssetResponseDto) {
+  function openAsset(asset: AssetResponseDto, context: AssetResponseDto[]) {
     if (onAssetClick) {
-      onAssetClick(asset);
+      onAssetClick(asset, context);
     } else {
       goto(`${AppRoute.PHOTOS}/${asset.id}`);
     }
@@ -138,7 +138,7 @@
             {#if hasAssets}
               <div class="assets-scroll">
                 {#each day.assets.slice(0, 20) as asset, i}
-                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset)}>
+                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset, day.assets)}>
                     <img
                       src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
                       alt=""

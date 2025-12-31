@@ -24,6 +24,7 @@
 
   // Viewer State (Lightbox)
   let viewedAsset: AssetResponseDto | null = $state(null);
+  let lightboxAssets: AssetResponseDto[] = $state([]);
 
   // assetsByDay needs to be updated to match the type expected by CalendarGrid
   // CalendarGrid expects: assetsByDay: Map<string, { count: number; assets: AssetResponseDto[] }>
@@ -147,12 +148,32 @@
   }
 
   // Lightbox functions
-  function openLightbox(asset: AssetResponseDto) {
+  function openLightbox(asset: AssetResponseDto, context: AssetResponseDto[] = []) {
     viewedAsset = asset;
+    // Ensure the current asset is in the context if not empty, otherwise default to just this one
+    if (context.length > 0) {
+      lightboxAssets = context;
+    } else {
+      lightboxAssets = [asset];
+    }
   }
 
   function closeLightbox() {
     viewedAsset = null;
+    lightboxAssets = [];
+  }
+
+  function navigateLightbox(direction: number) {
+    if (!viewedAsset || lightboxAssets.length === 0) return;
+
+    const currentIndex = lightboxAssets.findIndex((a) => a.id === viewedAsset?.id);
+    if (currentIndex === -1) return;
+
+    const newIndex = currentIndex + direction;
+
+    if (newIndex >= 0 && newIndex < lightboxAssets.length) {
+      viewedAsset = lightboxAssets[newIndex];
+    }
   }
 
   // Basic toggle selection for demo purposes
@@ -214,6 +235,13 @@
       onClose={closeLightbox}
       onToggleSelect={toggleSelection}
       isSelected={selectedAssets.some((a) => a.id === viewedAsset?.id)}
+      onNext={lightboxAssets.length > 1 &&
+      lightboxAssets.findIndex((a) => a.id === viewedAsset?.id) < lightboxAssets.length - 1
+        ? () => navigateLightbox(1)
+        : undefined}
+      onPrevious={lightboxAssets.length > 1 && lightboxAssets.findIndex((a) => a.id === viewedAsset?.id) > 0
+        ? () => navigateLightbox(-1)
+        : undefined}
     />
   {/if}
 </UserPageLayout>
