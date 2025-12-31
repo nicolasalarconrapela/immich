@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AssetLightbox from '$lib/components/calendar-page/asset-lightbox.svelte';
   import CalendarControls from '$lib/components/calendar-page/calendar-controls.svelte';
   import CalendarGrid from '$lib/components/calendar-page/calendar-grid.svelte';
   import DayDetailPanel from '$lib/components/calendar-page/day-detail-panel.svelte';
@@ -21,7 +22,11 @@
   let selectedDay: DateTime | null = $state(null);
   let selectedAssets: AssetResponseDto[] = $state([]);
 
-  // Assets grouped by day for the current month
+  // Viewer State (Lightbox)
+  let viewedAsset: AssetResponseDto | null = $state(null);
+
+  // assetsByDay needs to be updated to match the type expected by CalendarGrid
+  // CalendarGrid expects: assetsByDay: Map<string, { count: number; assets: AssetResponseDto[] }>
   let assetsByDay: Map<string, { count: number; assets: AssetResponseDto[] }> = $state(new Map());
 
   // Loading state
@@ -141,6 +146,25 @@
     currentDate = date;
   }
 
+  // Lightbox functions
+  function openLightbox(asset: AssetResponseDto) {
+    viewedAsset = asset;
+  }
+
+  function closeLightbox() {
+    viewedAsset = null;
+  }
+
+  // Basic toggle selection for demo purposes
+  function toggleSelection(asset: AssetResponseDto) {
+    const index = selectedAssets.findIndex((a) => a.id === asset.id);
+    if (index >= 0) {
+      selectedAssets = selectedAssets.filter((a) => a.id !== asset.id);
+    } else {
+      selectedAssets = [...selectedAssets, asset];
+    }
+  }
+
   // Load data on mount
   $effect(() => {
     if (viewMode === 'month' || viewMode === '2weeks') {
@@ -165,7 +189,7 @@
     {#if viewMode === 'day'}
       <DayView {currentDate} onNavigate={navigate} />
     {:else if viewMode === 'week'}
-      <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} />
+      <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} onAssetClick={openLightbox} />
     {:else if viewMode === 'year'}
       <YearView {currentDate} onNavigate={navigate} onMonthSelect={goToMonthView} onDaySelect={goToDayView} />
     {:else if viewMode === 'month'}
@@ -182,6 +206,16 @@
       </div>
     {/if}
   </div>
+
+  <!-- Quick Lightbox Overlay -->
+  {#if viewedAsset}
+    <AssetLightbox
+      asset={viewedAsset}
+      onClose={closeLightbox}
+      onToggleSelect={toggleSelection}
+      isSelected={selectedAssets.some((a) => a.id === viewedAsset?.id)}
+    />
+  {/if}
 </UserPageLayout>
 
 <style>

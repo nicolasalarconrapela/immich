@@ -17,9 +17,10 @@
     currentDate: DateTime;
     onNavigate: (direction: number) => void;
     onDaySelect: (date: DateTime) => void;
+    onAssetClick?: (asset: AssetResponseDto) => void;
   }
 
-  let { currentDate, onNavigate, onDaySelect }: Props = $props();
+  let { currentDate, onNavigate, onDaySelect, onAssetClick }: Props = $props();
 
   let weekDays: DayData[] = $state([]);
   let isLoading = $state(true);
@@ -73,8 +74,12 @@
     }
   }
 
-  function openAsset(assetId: string) {
-    goto(`${AppRoute.PHOTOS}/${assetId}`);
+  function openAsset(asset: AssetResponseDto) {
+    if (onAssetClick) {
+      onAssetClick(asset);
+    } else {
+      goto(`${AppRoute.PHOTOS}/${asset.id}`);
+    }
   }
 
   // Reload when date changes
@@ -133,7 +138,7 @@
             {#if hasAssets}
               <div class="assets-scroll">
                 {#each day.assets.slice(0, 20) as asset, i}
-                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset.id)}>
+                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset)}>
                     <img
                       src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
                       alt=""
