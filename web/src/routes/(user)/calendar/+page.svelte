@@ -4,6 +4,7 @@
   import DayDetailPanel from '$lib/components/calendar-page/day-detail-panel.svelte';
   import DayView from '$lib/components/calendar-page/day-view.svelte';
   import WeekView from '$lib/components/calendar-page/week-view.svelte';
+  import YearView from '$lib/components/calendar-page/year-view.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import type { AssetResponseDto } from '@immich/sdk';
   import { searchAssets } from '@immich/sdk';
@@ -93,7 +94,6 @@
         break;
       case 'year':
         currentDate = currentDate.plus({ years: direction });
-        loadMonthData();
         break;
       default:
         currentDate = currentDate.plus({ months: direction });
@@ -105,7 +105,7 @@
   function goToToday() {
     currentDate = DateTime.now();
     selectedDay = null;
-    if (viewMode === 'month' || viewMode === '2weeks' || viewMode === 'year') {
+    if (viewMode === 'month' || viewMode === '2weeks') {
       loadMonthData();
     }
   }
@@ -123,15 +123,22 @@
     selectedDay = null;
   }
 
+  // Go to month view for a specific month
+  function goToMonthView(date: DateTime) {
+    currentDate = date;
+    viewMode = 'month';
+    loadMonthData();
+  }
+
   // Close day panel
   function closePanel() {
     selectedDay = null;
     selectedAssets = [];
   }
 
-  // Load data on mount and view change
+  // Load data on mount
   $effect(() => {
-    if (viewMode === 'month' || viewMode === '2weeks' || viewMode === 'year') {
+    if (viewMode === 'month' || viewMode === '2weeks') {
       loadMonthData();
     }
   });
@@ -153,6 +160,8 @@
       <DayView {currentDate} onNavigate={navigate} />
     {:else if viewMode === 'week'}
       <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} />
+    {:else if viewMode === 'year'}
+      <YearView {currentDate} onNavigate={navigate} onMonthSelect={goToMonthView} onDaySelect={goToDayView} />
     {:else if viewMode === 'month'}
       <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
 
@@ -163,7 +172,7 @@
       <!-- Placeholder for other views -->
       <div class="coming-soon">
         <p>Vista "{viewMode}" próximamente...</p>
-        <p class="hint">Por ahora, usa Día, Semana o Mes</p>
+        <p class="hint">Por ahora, usa Día, Semana, Mes o Año</p>
       </div>
     {/if}
   </div>
@@ -174,6 +183,7 @@
     height: 100%;
     width: 100%;
     background: #0a0a0a;
+    overflow-y: auto;
   }
 
   .coming-soon {

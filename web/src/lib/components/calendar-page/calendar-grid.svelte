@@ -95,7 +95,7 @@
       {#each calendarDays as day}
         {@const isToday = day.date.toISODate() === today}
         {@const hasAssets = day.assetCount > 0}
-        {@const showThumbnails = day.assetCount >= 10 && day.thumbnails.length > 0}
+        {@const showThumbnails = day.assetCount > 0 && day.thumbnails.length > 0}
 
         <button
           type="button"
@@ -127,7 +127,7 @@
             </div>
           {/if}
 
-          <!-- Thumbnails grid (for days with many photos) -->
+          <!-- Thumbnails grid -->
           {#if showThumbnails}
             <div class="thumbnails-grid">
               {#each day.thumbnails.slice(0, 4) as thumb, i}
