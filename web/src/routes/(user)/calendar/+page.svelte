@@ -136,6 +136,11 @@
     selectedAssets = [];
   }
 
+  // Jump to specific date
+  function jumpToDate(date: DateTime) {
+    currentDate = date;
+  }
+
   // Load data on mount
   $effect(() => {
     if (viewMode === 'month' || viewMode === '2weeks') {
@@ -161,7 +166,13 @@
     {:else if viewMode === 'week'}
       <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} />
     {:else if viewMode === 'year'}
-      <YearView {currentDate} onNavigate={navigate} onMonthSelect={goToMonthView} onDaySelect={goToDayView} />
+      <YearView
+        {currentDate}
+        onNavigate={navigate}
+        onMonthSelect={goToMonthView}
+        onDaySelect={goToDayView}
+        onJumpToDate={jumpToDate}
+      />
     {:else if viewMode === 'month'}
       <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
 

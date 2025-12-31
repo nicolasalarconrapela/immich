@@ -1,7 +1,7 @@
 <script lang="ts">
   import { AssetMediaSize, searchAssets, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCalendarBlank, mdiChevronLeft, mdiChevronRight, mdiImageMultiple } from '@mdi/js';
+  import { mdiCalendar, mdiCalendarBlank, mdiChevronLeft, mdiChevronRight, mdiImageMultiple } from '@mdi/js';
   import { DateTime } from 'luxon';
 
   interface Props {
@@ -9,9 +9,10 @@
     onNavigate: (direction: number) => void;
     onMonthSelect: (date: DateTime) => void;
     onDaySelect: (date: DateTime) => void;
+    onJumpToDate: (date: DateTime) => void;
   }
 
-  let { currentDate, onNavigate, onMonthSelect, onDaySelect }: Props = $props();
+  let { currentDate, onNavigate, onMonthSelect, onDaySelect, onJumpToDate }: Props = $props();
 
   interface MonthHighlight {
     monthIndex: number; // 1-12
@@ -28,6 +29,7 @@
 
   let yearData = $state<MonthHighlight[]>([]);
   let isLoading = $state(true);
+  let dateInput: HTMLInputElement;
 
   const year = $derived(currentDate.year);
 
@@ -119,6 +121,25 @@
     return `/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`;
   }
 
+  function handleToday() {
+    onJumpToDate(DateTime.now());
+  }
+
+  function handleJumpClick() {
+    if (dateInput.showPicker) {
+      dateInput.showPicker();
+    } else {
+      dateInput.click();
+    }
+  }
+
+  function onDatePicked(event: Event) {
+    const val = (event.target as HTMLInputElement).value;
+    if (val) {
+      onJumpToDate(DateTime.fromISO(val));
+    }
+  }
+
   const totalYearPhotos = $derived(yearData.reduce((acc, m) => acc + m.totalCount, 0));
   const totalYearEvents = $derived(yearData.reduce((acc, m) => acc + m.topDays.length, 0));
 
@@ -138,6 +159,25 @@
       </div>
 
       <div class="header-actions">
+        <!-- Date Controls (Pill) -->
+        <div class="date-controls">
+          <button class="date-btn" onclick={handleToday}>Today</button>
+          <div class="separator"></div>
+          <button class="date-btn icon-text" onclick={handleJumpClick}>
+            <Icon icon={mdiCalendar} size="16" />
+            <span>Jump to date</span>
+          </button>
+
+          <!-- Hidden Native Date Input -->
+          <input
+            type="date"
+            bind:this={dateInput}
+            class="hidden-input"
+            onchange={onDatePicked}
+            onclick={(e) => e.stopPropagation()}
+          />
+        </div>
+
         <!-- Navigation -->
         <div class="nav-controls">
           <button class="icon-btn" onclick={() => onNavigate(-1)} aria-label="Previous Year">
@@ -290,7 +330,7 @@
   .header-actions {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
   .nav-controls {
@@ -314,6 +354,51 @@
   .icon-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     transform: scale(1.1);
+  }
+
+  /* Date Controls Pill */
+  .date-controls {
+    display: flex;
+    align-items: center;
+    background: #162032; /* Match cards */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+    position: relative;
+  }
+
+  .date-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .date-btn:hover {
+    color: white;
+  }
+
+  .separator {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .hidden-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .stats-row {
@@ -596,6 +681,11 @@
     .stat-card {
       padding: 1rem;
       flex: 1;
+    }
+
+    .header-actions {
+      flex-direction: column-reverse;
+      align-items: flex-end;
     }
   }
 </style>
