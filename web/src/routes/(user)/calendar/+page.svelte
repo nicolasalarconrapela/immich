@@ -8,7 +8,8 @@
   import YearView from '$lib/components/calendar-page/year-view.svelte';
   import UserPageLayout from '$lib/components/layouts/user-page-layout.svelte';
   import type { AssetResponseDto } from '@immich/sdk';
-  import { searchAssets } from '@immich/sdk';
+  import { searchAssets, updateAsset } from '@immich/sdk';
+  import { toastManager } from '@immich/ui';
   import { DateTime } from 'luxon';
   import { t } from 'svelte-i18n';
 
@@ -186,6 +187,35 @@
     }
   }
 
+  async function toggleFavorite(asset: AssetResponseDto) {
+    try {
+      const updated = await updateAsset({
+        id: asset.id,
+        updateAssetDto: {
+          isFavorite: !asset.isFavorite,
+        },
+      });
+
+      // Update local state
+      if (viewedAsset?.id === asset.id) {
+        viewedAsset = { ...viewedAsset, isFavorite: updated.isFavorite };
+      }
+
+      // Update in lightboxAssets context
+      const contextIndex = lightboxAssets.findIndex((a) => a.id === asset.id);
+      if (contextIndex !== -1) {
+        const newAssets = [...lightboxAssets];
+        newAssets[contextIndex] = { ...newAssets[contextIndex], isFavorite: updated.isFavorite };
+        lightboxAssets = newAssets;
+      }
+
+      toastManager.success(updated.isFavorite ? $t('added_to_favorites') : $t('removed_from_favorites'));
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      toastManager.error($t('errors.unable_to_add_remove_favorites'));
+    }
+  }
+
   // Load data on mount
   $effect(() => {
     if (viewMode === 'month' || viewMode === '2weeks') {
@@ -234,6 +264,7 @@
       asset={viewedAsset}
       onClose={closeLightbox}
       onToggleSelect={toggleSelection}
+      onToggleFavorite={toggleFavorite}
       isSelected={selectedAssets.some((a) => a.id === viewedAsset?.id)}
       onNext={lightboxAssets.length > 1 &&
       lightboxAssets.findIndex((a) => a.id === viewedAsset?.id) < lightboxAssets.length - 1

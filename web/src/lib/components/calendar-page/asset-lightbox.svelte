@@ -1,7 +1,15 @@
 <script lang="ts">
   import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCheckCircle, mdiCheckCircleOutline, mdiChevronLeft, mdiChevronRight, mdiClose } from '@mdi/js';
+  import {
+    mdiCheckCircle,
+    mdiCheckCircleOutline,
+    mdiChevronLeft,
+    mdiChevronRight,
+    mdiClose,
+    mdiHeart,
+    mdiHeartOutline,
+  } from '@mdi/js';
   import { onDestroy, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
 
@@ -9,12 +17,13 @@
     asset: AssetResponseDto;
     onClose: () => void;
     onToggleSelect?: (asset: AssetResponseDto) => void;
+    onToggleFavorite?: (asset: AssetResponseDto) => void;
     isSelected?: boolean;
     onNext?: () => void;
     onPrevious?: () => void;
   }
 
-  let { asset, onClose, onToggleSelect, isSelected = false, onNext, onPrevious }: Props = $props();
+  let { asset, onClose, onToggleSelect, onToggleFavorite, isSelected = false, onNext, onPrevious }: Props = $props();
 
   let previewUrl = $derived(`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Preview}`);
 
@@ -28,6 +37,8 @@
     } else if (e.key === ' ' && onToggleSelect) {
       e.preventDefault(); // Prevent scroll
       onToggleSelect(asset);
+    } else if (e.key.toLowerCase() === 'f' && onToggleFavorite) {
+      onToggleFavorite(asset);
     }
   }
 
@@ -51,6 +62,19 @@
     </button>
 
     <div class="spacer"></div>
+
+    <!-- Favorite Toggle -->
+    {#if onToggleFavorite}
+      <button
+        type="button"
+        class="icon-btn favorite-btn"
+        class:favorited={asset.isFavorite}
+        onclick={() => onToggleFavorite && onToggleFavorite(asset)}
+        title="Toggle Favorite (F)"
+      >
+        <Icon icon={asset.isFavorite ? mdiHeart : mdiHeartOutline} size="24" />
+      </button>
+    {/if}
 
     <!-- Selection Toggle -->
     {#if onToggleSelect}
@@ -138,6 +162,10 @@
     background: #4ade80;
     color: black;
     border-color: #4ade80;
+  }
+
+  .favorite-btn.favorited {
+    color: #ef4444; /* red-500 */
   }
 
   .image-container {
