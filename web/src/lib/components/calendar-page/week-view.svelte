@@ -6,6 +6,7 @@
   import { Icon } from '@immich/ui';
   import { mdiCamera, mdiChevronLeft, mdiChevronRight, mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
+  import { onDestroy } from 'svelte';
 
   interface DayData {
     date: DateTime;
@@ -25,6 +26,9 @@
   let weekDays: DayData[] = $state([]);
   let isLoading = $state(true);
 
+  // AbortController for cancelling pending requests
+  let abortController: AbortController | null = null;
+
   // Week range
   const weekStart = $derived(currentDate.startOf('week'));
   const weekEnd = $derived(currentDate.endOf('week'));
@@ -35,6 +39,15 @@
 
   // Load assets for the week
   async function loadWeekAssets() {
+    // Cancel any previous pending request
+    if (abortController) {
+      abortController.abort();
+    }
+
+    // Create new abort controller for this request
+    abortController = new AbortController();
+    const currentAbortController = abortController;
+
     isLoading = true;
 
     try {
@@ -46,6 +59,11 @@
           withExif: true,
         },
       });
+
+      // Check if this request was aborted while waiting
+      if (currentAbortController.signal.aborted) {
+        return;
+      }
 
       // Group by day
       const today = DateTime.now();
@@ -68,9 +86,16 @@
 
       weekDays = days;
     } catch (error) {
+      // Ignore abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to load week assets:', error);
     } finally {
-      isLoading = false;
+      // Only set loading to false if this is still the active request
+      if (!currentAbortController.signal.aborted) {
+        isLoading = false;
+      }
     }
   }
 
@@ -82,10 +107,17 @@
     }
   }
 
+  // Cleanup on unmount
+  onDestroy(() => {
+    if (abortController) {
+      abortController.abort();
+    }
+  });
+
   // Reload when date changes
   $effect(() => {
-    currentDate; // dependency
-    loadWeekAssets();
+    currentDate; // dependency - triggers reload on change
+    void loadWeekAssets();
   });
 </script>
 
