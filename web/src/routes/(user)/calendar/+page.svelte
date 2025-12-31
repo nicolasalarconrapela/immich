@@ -156,6 +156,7 @@
       onPrevious={() => navigate(-1)}
       onNext={() => navigate(1)}
       onToday={goToToday}
+      onJumpToDate={jumpToDate}
       bind:viewMode
     />
   {/snippet}
@@ -166,13 +167,7 @@
     {:else if viewMode === 'week'}
       <WeekView {currentDate} onNavigate={navigate} onDaySelect={goToDayView} />
     {:else if viewMode === 'year'}
-      <YearView
-        {currentDate}
-        onNavigate={navigate}
-        onMonthSelect={goToMonthView}
-        onDaySelect={goToDayView}
-        onJumpToDate={jumpToDate}
-      />
+      <YearView {currentDate} onNavigate={navigate} onMonthSelect={goToMonthView} onDaySelect={goToDayView} />
     {:else if viewMode === 'month'}
       <CalendarGrid {currentDate} {assetsByDay} {isLoading} onDayClick={selectDay} />
 
