@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { searchAssets, type AssetResponseDto, AssetMediaSize } from '@immich/sdk';
+  import { AssetMediaSize, searchAssets, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiChevronLeft, mdiChevronRight, mdiLoading, mdiCalendarBlank, mdiImageMultiple } from '@mdi/js';
+  import { mdiCalendarBlank, mdiChevronLeft, mdiChevronRight, mdiImageMultiple, mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
   import { fade } from 'svelte/transition';
 
@@ -41,7 +41,7 @@
         name: DateTime.fromObject({ month: m }).toFormat('MMMM'),
         totalCount: 0,
         coverAssets: [],
-        topDays: []
+        topDays: [],
       });
     }
     return months;
@@ -49,47 +49,47 @@
 
   async function loadAssets() {
     isLoading = true;
-    yearData = getEmptyMonths(); // Reset with empty structure immediately
+    yearData = getEmptyMonths(); // Reset with empty structure
 
     try {
-      const startOfYear = currentDate.startOf('year');
-      const endOfYear = currentDate.endOf('year');
+      const promises = [];
 
-      // Fetch a larger batch to ensure we have good coverage for highlights
-      // We'll limit to 2000 to be safe but get enough density
-      const result = await searchAssets({
-        metadataSearchDto: {
-          takenAfter: startOfYear.toISO() ?? undefined,
-          takenBefore: endOfYear.toISO() ?? undefined,
-          size: 999,
-          withExif: false,
-        },
-      });
+      for (let m = 1; m <= 12; m++) {
+        const monthDate = DateTime.fromObject({ year: currentDate.year, month: m });
+        const startOfMonth = monthDate.startOf('month');
+        const endOfMonth = monthDate.endOf('month');
 
-      const assets = result.assets.items;
-      const monthBuckets = new Map<number, AssetResponseDto[]>();
-
-      // bucketize
-      for (const asset of assets) {
-        const dt = DateTime.fromISO(asset.fileCreatedAt);
-        const m = dt.month;
-
-        if (!monthBuckets.has(m)) monthBuckets.set(m, []);
-        monthBuckets.get(m)?.push(asset);
+        promises.push(
+          searchAssets({
+            metadataSearchDto: {
+              takenAfter: startOfMonth.toISO() ?? undefined,
+              takenBefore: endOfMonth.toISO() ?? undefined,
+              size: 50, // Get enough for covers + local highlights
+              withExif: false,
+            },
+          }).then((result) => ({
+            monthIndex: m,
+            name: monthDate.toFormat('MMMM'),
+            // @ts-ignore - The SDK types might be missing 'total' on some versions but it exists in paginated responses
+            totalCount: result.assets.total ?? result.assets.items.length,
+            items: result.assets.items,
+          })),
+        );
       }
 
-      // Process each month
-      yearData = yearData.map(m => {
-        const mAssets = monthBuckets.get(m.monthIndex) || [];
+      const results = await Promise.all(promises);
 
-        // 1. Get Covers (First 3 for now, ideally distributed)
+      yearData = results.map((data) => {
+        const mAssets = data.items;
+
+        // 1. Get Covers
         const coverAssets = mAssets.slice(0, 3);
 
-        // 2. Find local "Events" (Days with most photos)
+        // 2. Find local "Events" (Days with most photos WITHIN the fetched set)
         const daysInMonth = new Map<string, number>();
-        mAssets.forEach(a => {
-           const dKey = DateTime.fromISO(a.fileCreatedAt).toISODate();
-           if(dKey) daysInMonth.set(dKey, (daysInMonth.get(dKey) || 0) + 1);
+        mAssets.forEach((a) => {
+          const dKey = DateTime.fromISO(a.fileCreatedAt).toISODate();
+          if (dKey) daysInMonth.set(dKey, (daysInMonth.get(dKey) || 0) + 1);
         });
 
         // Top 2 days
@@ -102,19 +102,19 @@
           return {
             date,
             count,
-            title: `Memories from ${date.toFormat('MMM d')}`, // Fallback title
-            subtitle: `${count} Photos • Highlights`
+            title: `Memories from ${date.toFormat('MMM d')}`,
+            subtitle: `Highlights`,
           };
         });
 
         return {
-          ...m,
-          totalCount: mAssets.length,
+          monthIndex: data.monthIndex,
+          name: data.name,
+          totalCount: data.totalCount,
           coverAssets,
-          topDays
+          topDays,
         };
       });
-
     } catch (error) {
       console.error('Failed to load year assets:', error);
     } finally {
@@ -157,7 +157,6 @@
   <div class="cards-grid">
     {#each yearData as month}
       <div class="month-card">
-
         <!-- Cover Area -->
         <button
           class="card-header"
@@ -169,19 +168,19 @@
             <div class="collage" class:multi={month.coverAssets.length >= 3}>
               {#if month.coverAssets.length >= 3}
                 <div class="collage-main">
-                  <img src={getThumbnailUrl(month.coverAssets[0])} alt="" loading="lazy"/>
+                  <img src={getThumbnailUrl(month.coverAssets[0])} alt="" loading="lazy" />
                 </div>
                 <div class="collage-side">
                   <div class="collage-top">
-                     <img src={getThumbnailUrl(month.coverAssets[1])} alt="" loading="lazy"/>
+                    <img src={getThumbnailUrl(month.coverAssets[1])} alt="" loading="lazy" />
                   </div>
                   <div class="collage-bottom">
-                     <img src={getThumbnailUrl(month.coverAssets[2])} alt="" loading="lazy"/>
+                    <img src={getThumbnailUrl(month.coverAssets[2])} alt="" loading="lazy" />
                   </div>
                 </div>
               {:else}
-                 <!-- Single Cover -->
-                 <img src={getThumbnailUrl(month.coverAssets[0])} class="single-cover" alt="" loading="lazy"/>
+                <!-- Single Cover -->
+                <img src={getThumbnailUrl(month.coverAssets[0])} class="single-cover" alt="" loading="lazy" />
               {/if}
 
               <!-- Gradient Overlay -->
@@ -196,7 +195,7 @@
 
           <!-- Month Title Overlay -->
           <div class="header-content">
-             <h2 class="month-name">{month.name}</h2>
+            <h2 class="month-name">{month.name}</h2>
           </div>
 
           <!-- Count Badge -->
@@ -210,11 +209,7 @@
         <!-- Events List -->
         <div class="events-list">
           {#each month.topDays as day}
-            <button
-              class="event-item"
-              onclick={() => onDaySelect(day.date)}
-              type="button"
-            >
+            <button class="event-item" onclick={() => onDaySelect(day.date)} type="button">
               <div class="date-box">
                 <span class="month-abbr">{day.date.toFormat('MMM').toUpperCase()}</span>
                 <span class="day-num">{day.date.day.toString().padStart(2, '0')}</span>
@@ -233,7 +228,6 @@
             </div>
           {/if}
         </div>
-
       </div>
     {/each}
   </div>
@@ -282,7 +276,7 @@
   }
 
   .icon-btn {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: none;
     color: var(--text-primary);
     padding: 0.5rem;
@@ -295,7 +289,7 @@
   }
 
   .icon-btn:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     transform: scale(1.1);
   }
 
@@ -322,19 +316,23 @@
   /* Card Component */
   .month-card {
     background: #162032; /* Slightly lighter than bg */
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 1rem;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     height: 480px; /* Fixed height for consistency */
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
   }
 
   .month-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-    border-color: rgba(255,255,255,0.1);
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.3),
+      0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   /* Card Header / Cover */
@@ -388,7 +386,7 @@
   .cover-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 50%);
     pointer-events: none;
   }
 
@@ -417,7 +415,7 @@
     font-weight: 700;
     color: white;
     margin: 0;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     text-transform: capitalize;
   }
 
@@ -433,7 +431,7 @@
     font-size: 0.75rem;
     font-weight: 600;
     z-index: 2;
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   /* Events List */
@@ -462,7 +460,7 @@
   }
 
   .event-item:hover {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .date-box {
@@ -470,8 +468,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.5rem;
     width: 42px;
     height: 42px;
