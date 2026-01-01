@@ -21,7 +21,7 @@
     onAssetClick?: (asset: AssetResponseDto, context: AssetResponseDto[]) => void;
   }
 
-  let { currentDate, onNavigate, onDaySelect, onAssetClick }: Props = $props();
+  let { currentDate, onNavigate: _, onDaySelect, onAssetClick }: Props = $props();
 
   let weekDays: DayData[] = $state([]);
   let isLoading = $state(true);
@@ -32,6 +32,9 @@
   // Week range
   const weekStart = $derived(currentDate.startOf('week'));
   const weekEnd = $derived(currentDate.endOf('week'));
+
+  // Get weekday names (short, starting Monday)
+  const weekdayHeaders = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
   // Load assets for the week
   async function loadWeekAssets() {
@@ -129,16 +132,25 @@
       {#each weekDays as day (day.date.toISO())}
         {@const hasAssets = day.assets.length > 0}
 
-        <div class="day-column" class:has-assets={hasAssets} class:today={day.isToday}>
+        <div class="day-column" class:today={day.isToday}>
           <!-- Day header -->
           <button type="button" class="day-header" onclick={() => onDaySelect(day.date)}>
-            <span class="day-name">{day.date.toFormat('ccc')}</span>
-            <span class="day-number" class:today-number={day.isToday}>
-              {day.date.day}
-            </span>
-            {#if hasAssets}
-              <span class="day-count">{day.assets.length}</span>
-            {/if}
+            <span class="day-name" class:today-text={day.isToday}>{day.date.toFormat('ccc')}</span>
+            <div class="number-wrapper" class:today-circle={day.isToday}>
+              <span class="day-number">{day.date.day}</span>
+            </div>
+
+            <div class="indicators">
+              {#if hasAssets}
+                <div class="dot dot-blue"></div>
+                {#if day.assets.length > 5}
+                  <div class="dot dot-orange"></div>
+                {/if}
+                {#if day.assets.length > 15}
+                  <div class="dot dot-teal"></div>
+                {/if}
+              {/if}
+            </div>
           </button>
 
           <!-- Day content -->
@@ -186,8 +198,25 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--bg-main);
-    color: var(--text-main);
+    background: #000000;
+    color: #ffffff;
+  }
+
+  .weekday-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+  }
+
+  .weekday {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    padding: 1rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 
   .loading {
@@ -195,84 +224,123 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--accent);
+    color: #00f2ff;
   }
 
   .week-grid {
     flex: 1;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 1px; /* Gap for borders */
-    background: var(--border-color); /* Lines color */
+    background: #111111;
+    gap: 1px;
     overflow-y: auto;
-    overflow-x: hidden;
   }
 
   .day-column {
     display: flex;
     flex-direction: column;
-    background: var(--bg-main);
+    background: #000000;
     min-height: 0;
+    position: relative;
   }
 
   .day-column.today {
-    background: rgba(56, 189, 248, 0.05); /* Very subtle accent tint */
+    background: #0a0a0a;
   }
 
   .day-header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
-    padding: 1rem 0.5rem;
+    padding: 1rem 0;
     background: none;
     border: none;
-    border-bottom: 1px solid var(--border-color);
     cursor: pointer;
-    transition: background 0.2s;
     width: 100%;
+    gap: 0.75rem;
+    transition: background 0.2s;
   }
 
   .day-header:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: #0f0f0f;
   }
 
   .day-name {
     font-size: 0.75rem;
-    text-transform: uppercase;
-    color: var(--text-muted);
     font-weight: 600;
+    color: #666666;
+    text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
-  .today .day-name {
-    color: var(--accent);
+  .today-text {
+    color: #00f2ff; /* Vibrant Cyan */
+    font-weight: 700;
+  }
+
+  .number-wrapper {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+
+  .today-circle {
+    background: #00f2ff;
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
   }
 
   .day-number {
     font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-main);
+    font-weight: 500;
+    color: #ffffff;
     line-height: 1;
   }
 
-  .today-number {
-    color: var(--accent);
+  .today-circle .day-number {
+    color: #000000;
+    font-weight: 700;
+  }
+
+  .indicators {
+    display: flex;
+    gap: 0.25rem;
+    height: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .dot-blue {
+    background: #3b82f6;
+  }
+  .dot-orange {
+    background: #f59e0b;
+  }
+  .dot-teal {
+    background: #14b8a6;
   }
 
   .day-count {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.15rem 0.5rem;
-    border-radius: 1rem;
-    font-weight: 500;
-    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    padding: 0.1rem 0.6rem;
+    border-radius: 9999px;
+    font-weight: 600;
   }
 
   .has-assets .day-count {
     background: rgba(56, 189, 248, 0.15);
-    color: var(--accent);
+    color: #38bdf8;
   }
 
   .day-content {
