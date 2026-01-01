@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Icon } from '@immich/ui';
-  import { mdiCalendar, mdiChevronLeft, mdiChevronRight, mdiClose } from '@mdi/js';
+  import { mdiCheck, mdiChevronDown, mdiChevronLeft, mdiChevronRight } from '@mdi/js';
   import { DateTime } from 'luxon';
   import { t } from 'svelte-i18n';
 
@@ -18,7 +18,62 @@
   let { currentDate, onPrevious, onNext, onToday, onJumpToDate, viewMode = $bindable() }: Props = $props();
 
   let showQuickPicker = $state(false);
+  let showViewDropdown = $state(false);
   let dateInput: HTMLInputElement;
+
+  // Dynamic Header Title based on View Mode
+  const headerTitle = $derived.by(() => {
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    switch (viewMode) {
+      case 'year': {
+        return currentDate.toFormat('yyyy');
+      }
+      case 'month': {
+        return capitalize(currentDate.toFormat("MMMM 'de' yyyy"));
+      }
+      case 'day': {
+        return capitalize(currentDate.toFormat("d 'de' MMMM 'de' yyyy"));
+      }
+      case 'week': {
+        const startOfWeek = currentDate.startOf('week');
+        const endOfWeek = currentDate.endOf('week');
+
+        const startMonth = capitalize(startOfWeek.toFormat('MMM'));
+        const endMonth = capitalize(endOfWeek.toFormat('MMM'));
+        const startYear = startOfWeek.toFormat('yyyy');
+        const endYear = endOfWeek.toFormat('yyyy');
+
+        if (startYear === endYear) {
+          if (startMonth === endMonth) {
+            return `${capitalize(startOfWeek.toFormat('MMMM'))} de ${startYear}`;
+          }
+          return `${startMonth} de ${startYear} – ${endMonth} de ${endYear}`;
+        } else {
+          return `${startMonth} de ${startYear} – ${endMonth} de ${endYear}`;
+        }
+      }
+      default: {
+        return '';
+      }
+    }
+  });
+
+  // Badge for week number (shown for week and day views)
+  const weekBadge = $derived.by(() => {
+    if (viewMode === 'week' || viewMode === 'day') {
+      return `Semana ${currentDate.weekNumber}`;
+    }
+    return null;
+  });
+
+  // View options for dropdown
+  const viewOptions: { value: ViewMode; label: string }[] = [
+    { value: 'day', label: 'Día' },
+    { value: 'week', label: 'Semana' },
+    { value: 'month', label: 'Mes' },
+    { value: 'year', label: 'Año' },
+  ];
 
   const monthYear = $derived(currentDate.toFormat('MMMM'));
   const year = $derived(currentDate.year);
@@ -131,175 +186,133 @@
   function handleQuickPickerClick(e: MouseEvent) {
     e.stopPropagation();
   }
+
+  function toggleViewDropdown(e: MouseEvent) {
+    e.stopPropagation();
+    showViewDropdown = !showViewDropdown;
+  }
+
+  function closeViewDropdown() {
+    showViewDropdown = false;
+  }
+
+  function selectViewOption(view: ViewMode) {
+    viewMode = view;
+    showViewDropdown = false;
+  }
 </script>
 
-<svelte:window onclick={closeQuickPicker} />
+<svelte:window
+  onclick={() => {
+    closeQuickPicker();
+    closeViewDropdown();
+  }}
+/>
 
 <div class="controls-container">
-  <!-- Navigation -->
-  <div class="nav-buttons">
-    <button type="button" class="nav-btn" onclick={onPrevious} title={$t('previous')}>
-      <Icon icon={mdiChevronLeft} size="24" />
-    </button>
+  <!-- Left Side -->
+  <div class="left-group">
+    <!-- Today Button -->
+    <button type="button" class="today-btn" onclick={onToday}> Hoy </button>
 
-    <button type="button" class="nav-btn" onclick={onNext} title={$t('next')}>
-      <Icon icon={mdiChevronRight} size="24" />
-    </button>
+    <!-- Navigation Arrows -->
+    <div class="nav-arrows">
+      <button type="button" class="nav-btn" onclick={onPrevious} title={$t('previous')}>
+        <Icon icon={mdiChevronLeft} size="20" />
+      </button>
+      <button type="button" class="nav-btn" onclick={onNext} title={$t('next')}>
+        <Icon icon={mdiChevronRight} size="20" />
+      </button>
+    </div>
+
+    <!-- Title & Week Badge -->
+    <div class="title-group">
+      <span class="header-title">{headerTitle}</span>
+      {#if weekBadge}
+        <span class="week-badge">{weekBadge}</span>
+      {/if}
+    </div>
   </div>
 
-  <!-- Date Controls (Pill: Today | Quick Pick) -->
-  <div class="date-controls">
-    <button type="button" class="date-btn" onclick={onToday}>Today</button>
-    <div class="separator"></div>
-    <button
-      type="button"
-      class="date-btn icon-text"
-      onclick={(e) => {
-        e.stopPropagation();
-        toggleQuickPicker();
-      }}
-    >
-      <Icon icon={mdiCalendar} size="16" />
-      <span>{monthYear} {year}</span>
-    </button>
+  <!-- Right Side: View Dropdown -->
+  <div class="right-group">
+    <div class="view-dropdown-container">
+      <button type="button" class="view-btn" onclick={toggleViewDropdown}>
+        <span>{viewOptions.find((v) => v.value === viewMode)?.label}</span>
+        <Icon icon={mdiChevronDown} size="18" />
+      </button>
 
-    <!-- Hidden Native Date Input (fallback) -->
-    <input
-      type="date"
-      bind:this={dateInput}
-      class="hidden-input"
-      onchange={onDatePicked}
-      onclick={(e) => e.stopPropagation()}
-    />
-
-    <!-- Quick Picker Dropdown -->
-    {#if showQuickPicker}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="quick-picker" onclick={handleQuickPickerClick}>
-        <div class="picker-header">
-          <span class="picker-title">
-            {#if viewMode === 'year'}
-              Seleccionar año
-            {:else if viewMode === 'month'}
-              Seleccionar mes
-            {:else if viewMode === 'week'}
-              Seleccionar semana
-            {:else}
-              Seleccionar día
-            {/if}
-          </span>
-          <button type="button" class="picker-close" onclick={closeQuickPicker}>
-            <Icon icon={mdiClose} size="18" />
-          </button>
+      {#if showViewDropdown}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="dropdown-menu" onclick={(e) => e.stopPropagation()}>
+          {#each viewOptions as option (option.value)}
+            <button
+              type="button"
+              class="dropdown-item"
+              class:selected={viewMode === option.value}
+              onclick={() => selectViewOption(option.value)}
+            >
+              <span>{option.label}</span>
+              {#if viewMode === option.value}
+                <Icon icon={mdiCheck} size="16" />
+              {/if}
+            </button>
+          {/each}
         </div>
-
-        <div class="picker-content">
-          {#if viewMode === 'year'}
-            <!-- Year Picker -->
-            <div class="year-grid">
-              {#each yearsRange() as y (y)}
-                <button type="button" class="picker-item" class:active={y === year} onclick={() => selectYear(y)}>
-                  {y}
-                </button>
-              {/each}
-            </div>
-          {:else if viewMode === 'month'}
-            <!-- Month Picker -->
-            <div class="month-grid">
-              {#each months as m, index (index)}
-                <button
-                  type="button"
-                  class="picker-item"
-                  class:active={index + 1 === currentDate.month}
-                  onclick={() => selectMonth(index)}
-                >
-                  {m}
-                </button>
-              {/each}
-            </div>
-          {:else if viewMode === 'week'}
-            <!-- Week Picker -->
-            <div class="week-list">
-              {#each weeksInMonth() as week (week.weekNumber)}
-                <button
-                  type="button"
-                  class="picker-item week-item"
-                  class:active={week.weekNumber === currentDate.weekNumber}
-                  onclick={() => selectWeek(week.start)}
-                >
-                  <span class="week-number">S{week.weekNumber}</span>
-                  <span class="week-range">
-                    {week.start.toFormat('d MMM')} - {week.end.toFormat('d MMM')}
-                  </span>
-                </button>
-              {/each}
-            </div>
-          {:else}
-            <!-- Day Picker (Mini Calendar) -->
-            <div class="day-picker">
-              <div class="day-header">
-                {#each ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as dayName (dayName)}
-                  <span class="day-name">{dayName}</span>
-                {/each}
-              </div>
-              <div class="day-grid">
-                {#each daysInMonth() as day (day.toISODate())}
-                  <button
-                    type="button"
-                    class="picker-item day-item"
-                    class:active={day.hasSame(currentDate, 'day')}
-                    class:today={day.hasSame(DateTime.now(), 'day')}
-                    onclick={() => selectDay(day)}
-                  >
-                    {day.day}
-                  </button>
-                {/each}
-              </div>
-            </div>
-          {/if}
-        </div>
-
-        <!-- Fallback: Open full date picker -->
-        <button type="button" class="picker-fallback" onclick={handleJumpClick}>
-          <Icon icon={mdiCalendar} size="14" />
-          Seleccionar fecha exacta...
-        </button>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 
-  <!-- View Switcher (Tab Style) -->
-  <div class="view-switcher">
-    <button type="button" class="segment-btn" class:active={viewMode === 'year'} onclick={() => selectView('year')}>
-      Año
-    </button>
-    <button type="button" class="segment-btn" class:active={viewMode === 'month'} onclick={() => selectView('month')}>
-      Mes
-    </button>
-    <button type="button" class="segment-btn" class:active={viewMode === 'week'} onclick={() => selectView('week')}>
-      Semana
-    </button>
-    <button type="button" class="segment-btn" class:active={viewMode === 'day'} onclick={() => selectView('day')}>
-      Día
-    </button>
-  </div>
+  <!-- Hidden Quick Picker (for title click - optional) -->
+  <input
+    type="date"
+    bind:this={dateInput}
+    class="hidden-input"
+    onchange={onDatePicked}
+    onclick={(e) => e.stopPropagation()}
+  />
 </div>
 
 <style>
   .controls-container {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    width: 100%;
     justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0;
     --ctrl-bg: #1e293b; /* Slate 800 */
     --ctrl-border: rgba(255, 255, 255, 0.1);
-    --ctrl-active: #38bdf8; /* Sky 400 */
     --ctrl-text: #f8fafc;
+    --ctrl-muted: #94a3b8;
+    --ctrl-active: #38bdf8;
   }
 
-  .nav-buttons {
+  /* Left Group */
+  .left-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .today-btn {
+    background: #2a2a2a;
+    border: 1px solid var(--ctrl-border);
+    color: var(--ctrl-text);
+    padding: 0.5rem 1.25rem;
+    border-radius: 9999px; /* Pill shape */
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .today-btn:hover {
+    background: #3a3a3a;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .nav-arrows {
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -310,282 +323,143 @@
     align-items: center;
     justify-content: center;
     background: transparent;
-    border: 1px solid transparent; /* placeholder */
-    color: var(--ctrl-text);
-    padding: 0.5rem;
-    border-radius: 0.5rem;
+    border: none;
+    color: var(--ctrl-muted);
+    padding: 0.25rem;
+    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    color: var(--ctrl-text);
+    background: rgba(255, 255, 255, 0.08);
   }
 
-  /* Date Controls Pill */
-  .date-controls {
+  .title-group {
     display: flex;
     align-items: center;
-    background: var(--ctrl-bg);
-    border: 1px solid var(--ctrl-border);
-    border-radius: 0.75rem;
-    padding: 0.25rem;
-    position: relative;
-    min-height: 38px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    gap: 0.75rem;
   }
 
-  .date-btn {
-    background: transparent;
-    border: none;
-    color: #cbd5e1; /* Slate 300 */
-    font-size: 0.875rem;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    cursor: pointer;
-    transition: color 0.2s;
+  .header-title {
+    font-size: 1.375rem;
+    font-weight: 400;
+    color: var(--ctrl-text);
+    letter-spacing: -0.01em;
+  }
+
+  .week-badge {
+    background: #3a3a3a;
+    color: var(--ctrl-muted);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+  }
+
+  /* Right Group */
+  .right-group {
+    display: flex;
+    align-items: center;
+  }
+
+  .view-dropdown-container {
+    position: relative;
+  }
+
+  .view-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    background: #2a2a2a;
+    border: 1px solid var(--ctrl-border);
+    color: var(--ctrl-text);
+    padding: 0.5rem 1rem;
+    padding-right: 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 110px;
+    justify-content: space-between;
   }
 
-  .date-btn:hover {
+  .view-btn:hover {
+    background: #3a3a3a;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: #1e1e1e;
+    border: 1px solid var(--ctrl-border);
+    border-radius: 0.75rem;
+    padding: 0.375rem;
+    min-width: 140px;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    color: #cbd5e1;
+    font-size: 0.875rem;
+    cursor: pointer;
+    text-align: left;
+    border-radius: 0.5rem;
+    transition: background 0.2s;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
     color: white;
   }
 
-  .icon-text {
-    text-transform: capitalize;
-  }
-
-  .separator {
-    width: 1px;
-    height: 16px;
-    background: rgba(255, 255, 255, 0.1);
+  .dropdown-item.selected {
+    color: var(--ctrl-active);
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.1);
   }
 
   .hidden-input {
     position: absolute;
-    top: 0;
-    left: 0;
     width: 0;
     height: 0;
     opacity: 0;
     pointer-events: none;
   }
 
-  /* Quick Picker Dropdown */
-  .quick-picker {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 320px;
-    background: #0f172a; /* Slate 900 */
-    border: 1px solid var(--ctrl-border);
-    border-radius: 1rem;
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
-    z-index: 100;
-    overflow: hidden;
-  }
+  @media (max-width: 768px) {
+    .controls-container {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
 
-  .picker-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid var(--ctrl-border);
-    background: rgba(30, 41, 59, 0.5); /* Slate 800 / 50% */
-  }
+    .left-group {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
 
-  .picker-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: white;
-  }
+    .right-group {
+      align-self: flex-end;
+    }
 
-  .picker-close {
-    background: none;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 0.25rem;
-    display: flex;
-  }
-
-  .picker-close:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .picker-content {
-    padding: 1rem;
-    max-height: 320px;
-    overflow-y: auto;
-  }
-
-  /* Month Grid */
-  .month-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-
-  /* Year Grid */
-  .year-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-  }
-
-  /* Week List */
-  .week-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .week-item {
-    justify-content: flex-start;
-    gap: 1rem;
-  }
-
-  .week-number {
-    font-weight: 700;
-    color: var(--ctrl-active);
-    min-width: 2rem;
-  }
-
-  .week-range {
-    font-size: 0.75rem;
-    color: #94a3b8;
-  }
-
-  /* Day Picker */
-  .day-picker {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .day-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
-    text-align: center;
-  }
-
-  .day-name {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    padding: 0.25rem;
-  }
-
-  .day-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
-  }
-
-  .day-item {
-    aspect-ratio: 1;
-    padding: 0;
-    font-size: 0.8rem;
-    font-weight: 500;
-  }
-
-  .day-item.today {
-    border: 1px solid var(--ctrl-active);
-    color: var(--ctrl-active);
-  }
-
-  /* Picker Items */
-  .picker-item {
-    background: #1e293b;
-    border: 1px solid transparent;
-    color: #cbd5e1;
-    padding: 0.75rem 0.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .picker-item:hover {
-    background: #334155;
-    color: white;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .picker-item.active {
-    background: var(--ctrl-active);
-    color: #0f172a; /* Dark text on bright bg */
-    font-weight: 700;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
-  }
-
-  .picker-fallback {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 1rem;
-    background: none;
-    border: none;
-    border-top: 1px solid var(--ctrl-border);
-    color: #94a3b8;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .picker-fallback:hover {
-    color: white;
-  }
-
-  /* Segmented Control (Tabs) */
-  .view-switcher {
-    display: flex;
-    background: var(--ctrl-bg);
-    border: 1px solid var(--ctrl-border);
-    border-radius: 0.75rem;
-    padding: 4px;
-    gap: 4px;
-    margin-left: auto;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .segment-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    padding: 0.35rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .segment-btn:hover {
-    color: white;
-  }
-
-  .segment-btn.active {
-    background: var(--ctrl-active);
-    color: #0f172a;
-    font-weight: 700;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  }
-
-  @media (max-width: 640px) {
-    .date-controls {
-      display: none;
+    .header-title {
+      font-size: 1.125rem;
     }
   }
 </style>
