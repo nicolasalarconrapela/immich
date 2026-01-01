@@ -12,6 +12,7 @@
     date: DateTime;
     isToday: boolean;
     assets: AssetResponseDto[];
+    assetsByHour: { hour: number; assets: AssetResponseDto[] }[];
   }
 
   interface Props {
@@ -34,7 +35,6 @@
   const weekEnd = $derived(currentDate.endOf('week'));
 
   // Get weekday names (short, starting Monday)
-  const weekdayHeaders = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
   // Load assets for the week
   async function loadWeekAssets() {
@@ -76,10 +76,26 @@
           return assetDate === dayKey;
         });
 
+        // Group assets by hour for this day
+        // Group assets by hour for this day
+        const hourlyGroups: Record<number, AssetResponseDto[]> = {};
+        for (const asset of dayAssets) {
+          const hour = DateTime.fromISO(asset.fileCreatedAt).hour;
+          if (!hourlyGroups[hour]) {
+            hourlyGroups[hour] = [];
+          }
+          hourlyGroups[hour].push(asset);
+        }
+
+        const hourlyData = Object.entries(hourlyGroups)
+          .map(([hour, assets]) => ({ hour: Number.parseInt(hour), assets }))
+          .sort((a, b) => a.hour - b.hour);
+
         days.push({
           date,
           isToday: date.hasSame(today, 'day'),
           assets: dayAssets,
+          assetsByHour: hourlyData,
         });
       }
 
@@ -156,21 +172,23 @@
           <!-- Day content -->
           <div class="day-content">
             {#if hasAssets}
-              <div class="assets-scroll">
-                {#each day.assets.slice(0, 20) as asset (asset.id)}
-                  <button type="button" class="asset-thumb" onclick={() => openAsset(asset, day.assets)}>
-                    <img
-                      src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
-                      alt=""
-                      loading="lazy"
-                    />
-                  </button>
-                {/each}
-                {#if day.assets.length > 20}
-                  <div class="more-indicator">
-                    +{day.assets.length - 20} más
+              <div class="hourly-groups">
+                {#each day.assetsByHour as group (group.hour)}
+                  <div class="hour-cluster">
+                    <div class="hour-timestamp">{group.hour}:00</div>
+                    <div class="assets-grid">
+                      {#each group.assets as asset (asset.id)}
+                        <button type="button" class="asset-thumb" onclick={() => openAsset(asset, day.assets)}>
+                          <img
+                            src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
+                            alt=""
+                            loading="lazy"
+                          />
+                        </button>
+                      {/each}
+                    </div>
                   </div>
-                {/if}
+                {/each}
               </div>
             {:else}
               <div class="no-assets">
@@ -200,23 +218,6 @@
     flex-direction: column;
     background: #000000;
     color: #ffffff;
-  }
-
-  .weekday-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    background: #0f172a;
-    border-bottom: 1px solid #1e293b;
-  }
-
-  .weekday {
-    text-align: center;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #64748b;
-    padding: 1rem 0;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
   }
 
   .loading {
@@ -329,53 +330,57 @@
     background: #14b8a6;
   }
 
-  .day-count {
-    font-size: 0.75rem;
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-    padding: 0.1rem 0.6rem;
-    border-radius: 9999px;
-    font-weight: 600;
-  }
-
-  .has-assets .day-count {
-    background: rgba(56, 189, 248, 0.15);
-    color: #38bdf8;
-  }
-
   .day-content {
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem;
-    /* Custom Scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
+    scrollbar-color: #334155 transparent;
   }
 
-  .assets-scroll {
+  .hourly-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .hour-cluster {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
 
+  .hour-timestamp {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #444;
+    text-transform: uppercase;
+    border-bottom: 1px solid #111;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+  }
+
+  .assets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(45%, 1fr));
+    gap: 4px;
+  }
+
   .asset-thumb {
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 0.5rem;
+    border-radius: 4px;
     overflow: hidden;
     border: none;
     padding: 0;
     cursor: pointer;
-    transition:
-      transform 0.2s,
-      opacity 0.2s;
+    transition: transform 0.2s;
     background: #000;
-    position: relative;
   }
 
   .asset-thumb:hover {
-    transform: scale(1.02);
-    z-index: 2;
+    transform: scale(1.05);
+    z-index: 10;
   }
 
   .asset-thumb img {
@@ -385,20 +390,13 @@
     display: block;
   }
 
-  .more-indicator {
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    padding: 0.5rem;
-  }
-
   .no-assets {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: rgba(255, 255, 255, 0.1);
-    font-size: 0.8rem;
+    color: #222;
+    font-size: 0.75rem;
     font-style: italic;
   }
 
@@ -424,18 +422,8 @@
       justify-content: center;
     }
 
-    .day-header .day-count {
-      display: none; /* Hide count in sidebar to save space */
-    }
-
     .day-content {
       padding: 0.75rem;
-    }
-
-    .assets-scroll {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 0.5rem;
     }
 
     .asset-thumb {
