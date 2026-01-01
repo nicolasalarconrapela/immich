@@ -257,7 +257,7 @@
   });
 </script>
 
-<UserPageLayout title={$t('calendar')} showUploadButton>
+<UserPageLayout showUploadButton>
   {#snippet buttons()}
     <CalendarControls
       {currentDate}
