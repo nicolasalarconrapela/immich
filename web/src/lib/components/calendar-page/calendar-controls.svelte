@@ -222,10 +222,10 @@
     <!-- Navigation Arrows -->
     <div class="nav-arrows">
       <button type="button" class="nav-btn" onclick={onPrevious} title={$t('previous')}>
-        <Icon icon={mdiChevronLeft} size="20" />
+        <Icon icon={mdiChevronLeft} size="24" />
       </button>
       <button type="button" class="nav-btn" onclick={onNext} title={$t('next')}>
-        <Icon icon={mdiChevronRight} size="20" />
+        <Icon icon={mdiChevronRight} size="24" />
       </button>
     </div>
 
@@ -329,7 +329,7 @@
     background: transparent;
     border: none;
     color: var(--ctrl-muted);
-    padding: 0.25rem;
+    padding: 0.5rem;
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s;
