@@ -4,7 +4,7 @@
   import type { AssetResponseDto } from '@immich/sdk';
   import { AssetMediaSize, searchAssets } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCamera, mdiLoading } from '@mdi/js';
+  import { mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
 
   interface Props {
@@ -12,32 +12,32 @@
     onNavigate: (direction: number) => void;
   }
 
-  let { currentDate, onNavigate }: Props = $props();
+  let { currentDate, onNavigate: _ }: Props = $props();
 
   let assets: AssetResponseDto[] = $state([]);
   let isLoading = $state(true);
+  let timelineElement: HTMLDivElement | undefined = $state();
 
   // Hours of the day (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   // Group assets by hour
   const assetsByHour = $derived.by(() => {
-    const hourMap = new Map<number, AssetResponseDto[]>();
+    const hourGroups: Record<number, AssetResponseDto[]> = {};
 
     // Initialize all hours
     for (let h = 0; h < 24; h++) {
-      hourMap.set(h, []);
+      hourGroups[h] = [];
     }
 
     for (const asset of assets) {
       const assetDate = DateTime.fromISO(asset.fileCreatedAt);
       const hour = assetDate.hour;
-      hourMap.get(hour)!.push(asset);
+      hourGroups[hour].push(asset);
     }
 
-    return hourMap;
+    return hourGroups;
   });
-
 
   // Load assets for this day
   async function loadDayAssets() {
@@ -65,34 +65,57 @@
   }
 
   function openAsset(assetId: string) {
-    goto(`${AppRoute.PHOTOS}/${assetId}`);
+    void goto(`${AppRoute.PHOTOS}/${assetId}`);
   }
 
   function formatHour(hour: number): string {
     return DateTime.fromObject({ hour }).toFormat('HH:mm');
   }
 
+  function scrollToFirstAssets() {
+    if (!timelineElement || assets.length === 0) {
+      return;
+    }
+
+    // Find the first hour that has assets
+    const firstHour = hours.find((h) => (assetsByHour[h]?.length || 0) > 0);
+
+    if (firstHour !== undefined) {
+      const row = timelineElement.querySelector(`[data-hour="${firstHour}"]`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
   // Reload when date changes
   $effect(() => {
-    currentDate; // dependency
-    loadDayAssets();
+    ((_) => {})(currentDate); // track dependency
+    void loadDayAssets();
+  });
+
+  // Scroll to first assets when they are loaded
+  $effect(() => {
+    if (!isLoading && assets.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(scrollToFirstAssets, 100);
+    }
   });
 </script>
 
 <div class="day-view">
-
   <!-- Timeline -->
   {#if isLoading}
     <div class="loading">
       <Icon icon={mdiLoading} size="48" class="animate-spin" />
     </div>
   {:else}
-    <div class="timeline">
-      {#each hours as hour}
-        {@const hourAssets = assetsByHour.get(hour) || []}
+    <div class="timeline" bind:this={timelineElement}>
+      {#each hours as hour (hour)}
+        {@const hourAssets = assetsByHour[hour] || []}
         {@const hasAssets = hourAssets.length > 0}
 
-        <div class="hour-row" class:has-assets={hasAssets}>
+        <div class="hour-row" class:has-assets={hasAssets} data-hour={hour}>
           <!-- Hour label -->
           <div class="hour-label">
             <span class="hour-time">{formatHour(hour)}</span>
@@ -110,7 +133,7 @@
           <div class="hour-content">
             {#if hasAssets}
               <div class="assets-grid">
-                {#each hourAssets.slice(0, 8) as asset, i}
+                {#each hourAssets.slice(0, 8) as asset, i (asset.id)}
                   <button type="button" class="asset-thumb" onclick={() => openAsset(asset.id)}>
                     <img
                       src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}
@@ -277,10 +300,6 @@
   }
 
   @media (max-width: 768px) {
-    .day-header {
-      padding: 1rem;
-    }
-
     .timeline {
       padding: 1rem;
     }
