@@ -97,7 +97,7 @@
       {#if totalPhotos > 0}
         <span class="photo-count">
           <Icon icon={mdiCamera} size="14" />
-          {totalPhotos} fotos
+          {totalPhotos} memories
         </span>
       {/if}
     </div>
@@ -160,40 +160,51 @@
 </div>
 
 <style>
+  :global(:root) {
+    --cal-bg: #0f172a; /* Slate 900 */
+    --cal-cell-bg: #1e293b; /* Slate 800 */
+    --cal-accent: #38bdf8; /* Sky 400 */
+    --cal-text: #f8fafc; /* Slate 50 */
+    --cal-text-muted: #94a3b8; /* Slate 400 */
+  }
+
   .day-view {
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: #0a0a0a;
+    background: var(--cal-bg);
+    color: var(--cal-text);
   }
 
   .day-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid #222;
+    padding: 1.5rem 2rem;
     position: sticky;
     top: 0;
-    background: #0a0a0a;
-    z-index: 10;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 20;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border: none;
-    color: white;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--cal-text);
     padding: 0.5rem;
-    border-radius: 0.5rem;
+    border-radius: 50%;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
   }
 
   .nav-btn:hover {
     background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
   }
 
   .date-info {
@@ -204,22 +215,25 @@
   }
 
   .date-text {
-    font-size: 1.125rem;
-    font-weight: 500;
-    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--cal-text);
     text-transform: capitalize;
   }
 
   .date-text.today {
-    color: #4ade80;
+    color: var(--cal-accent);
   }
 
   .photo-count {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    font-size: 0.75rem;
-    color: #888;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--cal-text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .loading {
@@ -227,43 +241,46 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--immich-primary);
+    color: var(--cal-accent);
   }
 
   .timeline {
     flex: 1;
     overflow-y: auto;
-    padding: 0 1rem;
+    padding: 1rem 2rem;
   }
 
   .hour-row {
     display: flex;
     align-items: flex-start;
-    min-height: 48px;
-    opacity: 0.4;
-    transition: opacity 0.2s;
+    min-height: 60px;
+    opacity: 0.3;
+    transition: opacity 0.3s;
   }
 
   .hour-row.has-assets {
     opacity: 1;
     min-height: auto;
-    padding: 0.5rem 0;
+    padding: 1rem 0;
   }
 
   .hour-label {
-    width: 50px;
+    width: 60px;
     flex-shrink: 0;
-    padding-top: 2px;
+    padding-top: 6px;
+    text-align: right;
+    padding-right: 1rem;
   }
 
   .hour-time {
-    font-size: 0.75rem;
-    color: #666;
-    font-weight: 500;
+    font-size: 0.8rem;
+    color: var(--cal-text-muted);
+    font-weight: 600;
+    letter-spacing: 0.05em;
   }
 
   .has-assets .hour-time {
-    color: #f97316;
+    color: var(--cal-accent);
   }
 
   .timeline-marker {
@@ -273,6 +290,7 @@
     flex-direction: column;
     align-items: center;
     position: relative;
+    margin-right: 1rem;
   }
 
   .timeline-line {
@@ -280,48 +298,49 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #333;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .timeline-dot {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    background: #f97316;
-    border: 2px solid #0a0a0a;
-    z-index: 1;
-    margin-top: 4px;
+    background: var(--cal-accent);
+    border: 3px solid var(--cal-bg);
+    z-index: 10;
+    margin-top: 8px;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
   }
 
   .hour-content {
     flex: 1;
     min-width: 0;
-    padding-left: 0.75rem;
+    padding-bottom: 1rem;
   }
 
   .assets-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
   }
 
   .asset-thumb {
     position: relative;
-    width: 64px;
-    height: 64px;
-    border-radius: 8px;
+    aspect-ratio: 1;
+    border-radius: 0.75rem;
     overflow: hidden;
     border: none;
     padding: 0;
     cursor: pointer;
     transition:
-      transform 0.2s,
+      transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
       box-shadow 0.2s;
   }
 
   .asset-thumb:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    z-index: 5;
   }
 
   .asset-thumb img {
@@ -338,14 +357,28 @@
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
+    backdrop-filter: blur(2px);
   }
 
-  @media (min-width: 768px) {
-    .asset-thumb {
-      width: 80px;
-      height: 80px;
+  @media (max-width: 768px) {
+    .day-header {
+      padding: 1rem;
+    }
+
+    .timeline {
+      padding: 1rem;
+    }
+
+    .hour-label {
+      width: 45px;
+      font-size: 0.75rem;
+      padding-right: 0.5rem;
+    }
+
+    .timeline-marker {
+      margin-right: 0.5rem;
     }
   }
 </style>

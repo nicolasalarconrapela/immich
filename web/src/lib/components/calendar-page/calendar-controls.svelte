@@ -17,7 +17,6 @@
 
   let { currentDate, onPrevious, onNext, onToday, onJumpToDate, viewMode = $bindable() }: Props = $props();
 
-  let showDropdown = $state(false);
   let showQuickPicker = $state(false);
   let dateInput: HTMLInputElement;
 
@@ -82,11 +81,6 @@
 
   function selectView(view: ViewMode) {
     viewMode = view;
-    showDropdown = false;
-  }
-
-  function closeDropdown() {
-    showDropdown = false;
   }
 
   function toggleQuickPicker() {
@@ -245,7 +239,7 @@
             <!-- Day Picker (Mini Calendar) -->
             <div class="day-picker">
               <div class="day-header">
-                {#each ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as dayName}
+                {#each ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as dayName (dayName)}
                   <span class="day-name">{dayName}</span>
                 {/each}
               </div>
@@ -299,6 +293,10 @@
     gap: 1rem;
     width: 100%;
     justify-content: space-between;
+    --ctrl-bg: #1e293b; /* Slate 800 */
+    --ctrl-border: rgba(255, 255, 255, 0.1);
+    --ctrl-active: #38bdf8; /* Sky 400 */
+    --ctrl-text: #f8fafc;
   }
 
   .nav-buttons {
@@ -311,13 +309,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border: none;
-    color: white;
+    background: transparent;
+    border: 1px solid transparent; /* placeholder */
+    color: var(--ctrl-text);
     padding: 0.5rem;
     border-radius: 0.5rem;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
   }
 
   .nav-btn:hover {
@@ -328,18 +326,19 @@
   .date-controls {
     display: flex;
     align-items: center;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: var(--ctrl-bg);
+    border: 1px solid var(--ctrl-border);
     border-radius: 0.75rem;
     padding: 0.25rem;
     position: relative;
     min-height: 38px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .date-btn {
     background: transparent;
     border: none;
-    color: #e5e5e5;
+    color: #cbd5e1; /* Slate 300 */
     font-size: 0.875rem;
     font-weight: 600;
     padding: 0.25rem 0.75rem;
@@ -361,7 +360,7 @@
   .separator {
     width: 1px;
     height: 16px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .hidden-input {
@@ -378,12 +377,13 @@
   .quick-picker {
     position: absolute;
     top: calc(100% + 8px);
-    left: 0;
-    min-width: 280px;
-    background: #1e1e1e;
-    border: 1px solid #444;
-    border-radius: 0.75rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 320px;
+    background: #0f172a; /* Slate 900 */
+    border: 1px solid var(--ctrl-border);
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
     z-index: 100;
     overflow: hidden;
   }
@@ -392,21 +392,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #333;
-    background: #252525;
+    padding: 1rem;
+    border-bottom: 1px solid var(--ctrl-border);
+    background: rgba(30, 41, 59, 0.5); /* Slate 800 / 50% */
   }
 
   .picker-title {
     font-size: 0.875rem;
     font-weight: 600;
-    color: #e5e5e5;
+    color: white;
   }
 
   .picker-close {
     background: none;
     border: none;
-    color: #888;
+    color: #94a3b8;
     cursor: pointer;
     padding: 0.25rem;
     border-radius: 0.25rem;
@@ -419,8 +419,8 @@
   }
 
   .picker-content {
-    padding: 0.75rem;
-    max-height: 300px;
+    padding: 1rem;
+    max-height: 320px;
     overflow-y: auto;
   }
 
@@ -452,13 +452,13 @@
 
   .week-number {
     font-weight: 700;
-    color: #38bdf8;
+    color: var(--ctrl-active);
     min-width: 2rem;
   }
 
   .week-range {
     font-size: 0.75rem;
-    color: #888;
+    color: #94a3b8;
   }
 
   /* Day Picker */
@@ -478,7 +478,7 @@
   .day-name {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #666;
+    color: #64748b;
     padding: 0.25rem;
   }
 
@@ -490,20 +490,22 @@
 
   .day-item {
     aspect-ratio: 1;
-    padding: 0.25rem;
-    font-size: 0.75rem;
+    padding: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
   }
 
   .day-item.today {
-    border: 1px solid #38bdf8;
+    border: 1px solid var(--ctrl-active);
+    color: var(--ctrl-active);
   }
 
   /* Picker Items */
   .picker-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    color: #ccc;
-    padding: 0.5rem;
+    background: #1e293b;
+    border: 1px solid transparent;
+    color: #cbd5e1;
+    padding: 0.75rem 0.5rem;
     border-radius: 0.5rem;
     font-size: 0.875rem;
     cursor: pointer;
@@ -514,14 +516,16 @@
   }
 
   .picker-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: #334155;
     color: white;
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
   .picker-item.active {
-    background: #4ade80;
-    color: black;
-    font-weight: 600;
+    background: var(--ctrl-active);
+    color: #0f172a; /* Dark text on bright bg */
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
   }
 
   .picker-fallback {
@@ -530,36 +534,36 @@
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
-    padding: 0.75rem;
+    padding: 1rem;
     background: none;
     border: none;
-    border-top: 1px solid #333;
-    color: #888;
+    border-top: 1px solid var(--ctrl-border);
+    color: #94a3b8;
     font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .picker-fallback:hover {
-    background: rgba(255, 255, 255, 0.05);
     color: white;
   }
 
   /* Segmented Control (Tabs) */
   .view-switcher {
     display: flex;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: var(--ctrl-bg);
+    border: 1px solid var(--ctrl-border);
     border-radius: 0.75rem;
     padding: 4px;
     gap: 4px;
     margin-left: auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .segment-btn {
     background: transparent;
     border: none;
-    color: #9ca3af;
+    color: #94a3b8;
     padding: 0.35rem 1rem;
     border-radius: 0.5rem;
     font-size: 0.875rem;
@@ -573,8 +577,8 @@
   }
 
   .segment-btn.active {
-    background: #4ade80;
-    color: #000;
+    background: var(--ctrl-active);
+    color: #0f172a;
     font-weight: 700;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }

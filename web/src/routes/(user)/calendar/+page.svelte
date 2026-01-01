@@ -319,7 +319,7 @@
   .calendar-wrapper {
     height: 100%;
     width: 100%;
-    background: #0a0a0a;
+    background: #0f172a; /* Slate 900 */
     overflow-y: auto;
   }
 

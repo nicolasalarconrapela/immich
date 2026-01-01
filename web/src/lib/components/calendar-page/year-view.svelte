@@ -69,7 +69,6 @@
           }).then((result) => ({
             monthIndex: m,
             name: monthDate.toFormat('MMMM'),
-            // @ts-ignore
             totalCount: result.assets.total ?? result.assets.items.length,
             items: result.assets.items,
           })),
