@@ -4,7 +4,7 @@
   import type { AssetResponseDto } from '@immich/sdk';
   import { AssetMediaSize, searchAssets } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCamera, mdiChevronLeft, mdiChevronRight, mdiLoading } from '@mdi/js';
+  import { mdiCamera, mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
 
   interface Props {
@@ -19,10 +19,6 @@
 
   // Hours of the day (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  // Format date for header
-  const formattedDate = $derived(currentDate.toFormat('cccc, d MMMM'));
-  const isToday = $derived(currentDate.hasSame(DateTime.now(), 'day'));
 
   // Group assets by hour
   const assetsByHour = $derived.by(() => {
@@ -42,8 +38,6 @@
     return hourMap;
   });
 
-  // Total photos for the day
-  const totalPhotos = $derived(assets.length);
 
   // Load assets for this day
   async function loadDayAssets() {
@@ -86,26 +80,6 @@
 </script>
 
 <div class="day-view">
-  <!-- Day header -->
-  <div class="day-header">
-    <button type="button" class="nav-btn" onclick={() => onNavigate(-1)}>
-      <Icon icon={mdiChevronLeft} size="24" />
-    </button>
-
-    <div class="date-info">
-      <span class="date-text" class:today={isToday}>{formattedDate}</span>
-      {#if totalPhotos > 0}
-        <span class="photo-count">
-          <Icon icon={mdiCamera} size="14" />
-          {totalPhotos} memories
-        </span>
-      {/if}
-    </div>
-
-    <button type="button" class="nav-btn" onclick={() => onNavigate(1)}>
-      <Icon icon={mdiChevronRight} size="24" />
-    </button>
-  </div>
 
   <!-- Timeline -->
   {#if isLoading}
@@ -174,66 +148,6 @@
     flex-direction: column;
     background: var(--cal-bg);
     color: var(--cal-text);
-  }
-
-  .day-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 2rem;
-    position: sticky;
-    top: 0;
-    background: rgba(15, 23, 42, 0.9);
-    backdrop-filter: blur(10px);
-    z-index: 20;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  .nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    color: var(--cal-text);
-    padding: 0.5rem;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.1);
-  }
-
-  .date-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .date-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--cal-text);
-    text-transform: capitalize;
-  }
-
-  .date-text.today {
-    color: var(--cal-accent);
-  }
-
-  .photo-count {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    color: var(--cal-text-muted);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
 
   .loading {
