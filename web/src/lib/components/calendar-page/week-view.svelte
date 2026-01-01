@@ -4,7 +4,7 @@
   import type { AssetResponseDto } from '@immich/sdk';
   import { AssetMediaSize, searchAssets } from '@immich/sdk';
   import { Icon } from '@immich/ui';
-  import { mdiCamera, mdiChevronLeft, mdiChevronRight, mdiLoading } from '@mdi/js';
+  import { mdiLoading } from '@mdi/js';
   import { DateTime } from 'luxon';
   import { onDestroy } from 'svelte';
 
@@ -32,22 +32,6 @@
   // Week range
   const weekStart = $derived(currentDate.startOf('week'));
   const weekEnd = $derived(currentDate.endOf('week'));
-  const weekLabel = $derived.by(() => {
-    const start = weekStart;
-    const end = weekEnd;
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-    if (start.month === end.month && start.year === end.year) {
-      return `${start.day} - ${end.day} de ${capitalize(start.toFormat('MMMM'))} de ${start.year}`;
-    }
-    if (start.year === end.year) {
-      return `${start.day} ${capitalize(start.toFormat('MMM'))} - ${end.day} ${capitalize(end.toFormat('MMM'))} de ${start.year}`;
-    }
-    return `${start.day} ${capitalize(start.toFormat('MMM'))} de ${start.year} - ${end.day} ${capitalize(end.toFormat('MMM'))} de ${end.year}`;
-  });
-
-  // Total photos for the week
-  const totalPhotos = $derived(weekDays.reduce((sum, day) => sum + day.assets.length, 0));
 
   // Load assets for the week
   async function loadWeekAssets() {
@@ -135,27 +119,6 @@
 </script>
 
 <div class="week-view">
-  <!-- Week header -->
-  <div class="week-header">
-    <button type="button" class="nav-btn" onclick={() => onNavigate(-1)}>
-      <Icon icon={mdiChevronLeft} size="24" />
-    </button>
-
-    <div class="week-info">
-      <span class="week-label">{weekLabel}</span>
-      {#if totalPhotos > 0}
-        <span class="photo-count">
-          <Icon icon={mdiCamera} size="14" />
-          {totalPhotos} fotos
-        </span>
-      {/if}
-    </div>
-
-    <button type="button" class="nav-btn" onclick={() => onNavigate(1)}>
-      <Icon icon={mdiChevronRight} size="24" />
-    </button>
-  </div>
-
   <!-- Week grid -->
   {#if isLoading}
     <div class="loading">
@@ -225,60 +188,6 @@
     flex-direction: column;
     background: var(--bg-main);
     color: var(--text-main);
-  }
-
-  .week-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 2rem;
-    background: rgba(15, 23, 42, 0.95);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: none;
-    color: var(--text-main);
-    padding: 0.5rem;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.1);
-  }
-
-  .week-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .week-label {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-main);
-    text-transform: capitalize;
-  }
-
-  .photo-count {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    font-weight: 500;
   }
 
   .loading {
