@@ -32,7 +32,19 @@
   // Week range
   const weekStart = $derived(currentDate.startOf('week'));
   const weekEnd = $derived(currentDate.endOf('week'));
-  const weekLabel = $derived(`${weekStart.toFormat('d MMM')} - ${weekEnd.toFormat('d MMM yyyy')}`);
+  const weekLabel = $derived.by(() => {
+    const start = weekStart;
+    const end = weekEnd;
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    if (start.month === end.month && start.year === end.year) {
+      return `${start.day} - ${end.day} de ${capitalize(start.toFormat('MMMM'))} de ${start.year}`;
+    }
+    if (start.year === end.year) {
+      return `${start.day} ${capitalize(start.toFormat('MMM'))} - ${end.day} ${capitalize(end.toFormat('MMM'))} de ${start.year}`;
+    }
+    return `${start.day} ${capitalize(start.toFormat('MMM'))} de ${start.year} - ${end.day} ${capitalize(end.toFormat('MMM'))} de ${end.year}`;
+  });
 
   // Total photos for the week
   const totalPhotos = $derived(weekDays.reduce((sum, day) => sum + day.assets.length, 0));
@@ -103,7 +115,7 @@
     if (onAssetClick) {
       onAssetClick(asset, context);
     } else {
-      goto(`${AppRoute.PHOTOS}/${asset.id}`);
+      void goto(`${AppRoute.PHOTOS}/${asset.id}`);
     }
   }
 
@@ -116,7 +128,8 @@
 
   // Reload when date changes
   $effect(() => {
-    currentDate; // dependency - triggers reload on change
+    // track currentDate changes
+    ((_) => {})(currentDate);
     void loadWeekAssets();
   });
 </script>
@@ -150,7 +163,7 @@
     </div>
   {:else}
     <div class="week-grid">
-      {#each weekDays as day}
+      {#each weekDays as day (day.date.toISO())}
         {@const hasAssets = day.assets.length > 0}
 
         <div class="day-column" class:has-assets={hasAssets} class:today={day.isToday}>
@@ -169,7 +182,7 @@
           <div class="day-content">
             {#if hasAssets}
               <div class="assets-scroll">
-                {#each day.assets.slice(0, 20) as asset, i}
+                {#each day.assets.slice(0, 20) as asset (asset.id)}
                   <button type="button" class="asset-thumb" onclick={() => openAsset(asset, day.assets)}>
                     <img
                       src={`/api/assets/${asset.id}/thumbnail?size=${AssetMediaSize.Thumbnail}`}

@@ -39,18 +39,22 @@
         const startOfWeek = currentDate.startOf('week');
         const endOfWeek = currentDate.endOf('week');
 
-        const startMonth = capitalize(startOfWeek.toFormat('MMM'));
-        const endMonth = capitalize(endOfWeek.toFormat('MMM'));
+        const startMonth = capitalize(startOfWeek.toFormat('MMMM'));
+        const endMonth = capitalize(endOfWeek.toFormat('MMMM'));
         const startYear = startOfWeek.toFormat('yyyy');
         const endYear = endOfWeek.toFormat('yyyy');
 
         if (startYear === endYear) {
           if (startMonth === endMonth) {
-            return `${capitalize(startOfWeek.toFormat('MMMM'))} de ${startYear}`;
+            return `${startOfWeek.day} – ${endOfWeek.day} de ${startMonth} de ${startYear}`;
           }
-          return `${startMonth} de ${startYear} – ${endMonth} de ${endYear}`;
+          const startMonthShort = capitalize(startOfWeek.toFormat('MMM'));
+          const endMonthShort = capitalize(endOfWeek.toFormat('MMM'));
+          return `${startOfWeek.day} ${startMonthShort} – ${endOfWeek.day} ${endMonthShort} de ${startYear}`;
         } else {
-          return `${startMonth} de ${startYear} – ${endMonth} de ${endYear}`;
+          const startMonthShort = capitalize(startOfWeek.toFormat('MMM'));
+          const endMonthShort = capitalize(endOfWeek.toFormat('MMM'));
+          return `${startOfWeek.day} ${startMonthShort} de ${startYear} – ${endOfWeek.day} ${endMonthShort} de ${endYear}`;
         }
       }
       default: {
